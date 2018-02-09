@@ -85,6 +85,7 @@ Copyright 2017 Ellucian Company L.P. and its affiliates.
           grant create session to GENERALAUTO2;
 
         END;
+        /
       </SQL_CODE>
     </PERFORMANCE_SQL>
 </PERFORMANCE>
