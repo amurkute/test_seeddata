@@ -5,8 +5,6 @@ Copyright 2017 Ellucian Company L.P. and its affiliates.
 <PERFORMANCE>
     <PERFORMANCE_SQL>
       <SQL_CODE>
-        DECLARE
-        BEGIN
           conn bansecr/u_pick_it
 
           create user GENERALAUTO2 identified by u_pick_it;
@@ -83,8 +81,6 @@ Copyright 2017 Ellucian Company L.P. and its affiliates.
            
           grant select on GUBINST to GENERALAUTO2;
           grant create session to GENERALAUTO2;
-
-        END;
         /
       </SQL_CODE>
     </PERFORMANCE_SQL>
