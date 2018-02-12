@@ -5,83 +5,37 @@ Copyright 2017 Ellucian Company L.P. and its affiliates.
 <PERFORMANCE>
     <PERFORMANCE_SQL>
       <SQL_CODE>
-          conn bansecr/u_pick_it
-
+        BEGIN
+          conn bansecr/u_pick_it;
           create user GENERALAUTO2 identified by u_pick_it;
           grant connect, resource, ban_default_m, ban_default_q to GENERALAUTO2;
           alter user GENERALAUTO2 grant connect through banproxy ;
            
           -- create banner security rules for all product classes
-          insert into gurucls ( gurucls_userid, gurucls_class_code, gurucls_activity_date,
-                                gurucls_user_id)
-            select  'GENERALAUTO2', 'BAN_GENERAL_C', sysdate, user
-              from dual
-             where not exists (select 1 from gurucls
-                                where gurucls_userid = 'GENERALAUTO2'
-                                  and gurucls_class_code = 'BAN_GENERAL_C');
-          insert into gurucls ( gurucls_userid, gurucls_class_code, gurucls_activity_date,
-             gurucls_user_id)
-            select  'GENERALAUTO2', 'BAN_STUDENT_C', sysdate, user
-              from dual
-             where not exists (select 1 from gurucls
-                                where gurucls_userid = 'GENERALAUTO2'
-                                  and gurucls_class_code = 'BAN_STUDENT_C');
-                                  insert into gurucls ( gurucls_userid, gurucls_class_code, gurucls_activity_date,
-             gurucls_user_id)
-            select  'GENERALAUTO2', 'BAN_ARSYS_C', sysdate, user
-              from dual
-             where not exists (select 1 from gurucls
-                                where gurucls_userid = 'GENERALAUTO2'
-                                  and gurucls_class_code = 'BAN_ARSYS_C');
-           insert into gurucls ( gurucls_userid, gurucls_class_code, gurucls_activity_date,
-                                gurucls_user_id)
-            select  'GENERALAUTO2', 'BAN_PAYROLL_C', sysdate, user
-              from dual
-             where not exists (select 1 from gurucls
-                                where gurucls_userid = 'GENERALAUTO2'
-                                  and gurucls_class_code = 'BAN_PAYROLL_C');
+          insert into gurucls ( gurucls_userid, gurucls_class_code, gurucls_activity_date, gurucls_user_id) select  'GENERALAUTO2', 'BAN_GENERAL_C', sysdate, user from dual where not exists (select 1 from gurucls where gurucls_userid = 'GENERALAUTO2' and gurucls_class_code = 'BAN_GENERAL_C');
+          
+          insert into gurucls ( gurucls_userid, gurucls_class_code, gurucls_activity_date, gurucls_user_id) select  'GENERALAUTO2', 'BAN_STUDENT_C', sysdate, user from dual where not exists (select 1 from gurucls where gurucls_userid = 'GENERALAUTO2' and gurucls_class_code = 'BAN_STUDENT_C'); 
+
+          insert into gurucls ( gurucls_userid, gurucls_class_code, gurucls_activity_date, gurucls_user_id) select  'GENERALAUTO2', 'BAN_ARSYS_C', sysdate, user from dual
+             where not exists (select 1 from gurucls where gurucls_userid = 'GENERALAUTO2' and gurucls_class_code = 'BAN_ARSYS_C');
+          
+          insert into gurucls ( gurucls_userid, gurucls_class_code, gurucls_activity_date, gurucls_user_id) select  'GENERALAUTO2', 'BAN_PAYROLL_C', sysdate, user from dual where not exists (select 1 from gurucls where gurucls_userid = 'GENERALAUTO2' and gurucls_class_code = 'BAN_PAYROLL_C');
                                    
-          insert into gurucls ( gurucls_userid, gurucls_class_code, gurucls_activity_date,
-                                gurucls_user_id)
-            select  'GENERALAUTO2', 'BAN_FINANCE_C', sysdate, user
-              from dual
-             where not exists (select 1 from gurucls
-                                where gurucls_userid = 'GENERALAUTO2'
-                                  and gurucls_class_code = 'BAN_FINANCE_C');
-          insert into gurucls ( gurucls_userid, gurucls_class_code, gurucls_activity_date,
-                                gurucls_user_id)
-            select  'GENERALAUTO2', 'BAN_POSNCTL_C', sysdate, user
-              from dual
-             where not exists (select 1 from gurucls
-                                where gurucls_userid = 'GENERALAUTO2'
-                                  and gurucls_class_code = 'BAN_POSNCTL_C');
-          insert into gurucls ( gurucls_userid, gurucls_class_code, gurucls_activity_date,
-                                gurucls_user_id)
-            select  'GENERALAUTO2', 'BAN_FINAID_C', sysdate, user
-              from dual
-             where not exists (select 1 from gurucls
-                                where gurucls_userid = 'GENERALAUTO2'
-                                  and gurucls_class_code = 'BAN_FINAID_C');
+          insert into gurucls ( gurucls_userid, gurucls_class_code, gurucls_activity_date, gurucls_user_id) select  'GENERALAUTO2', 'BAN_FINANCE_C', sysdate, user from dual where not exists (select 1 from gurucls where gurucls_userid = 'GENERALAUTO2' and gurucls_class_code = 'BAN_FINANCE_C');
+          
+          insert into gurucls ( gurucls_userid, gurucls_class_code, gurucls_activity_date, gurucls_user_id) select  'GENERALAUTO2', 'BAN_POSNCTL_C', sysdate, user from dual where not exists (select 1 from gurucls where gurucls_userid = 'GENERALAUTO2' and gurucls_class_code = 'BAN_POSNCTL_C');
+          insert into gurucls ( gurucls_userid, gurucls_class_code, gurucls_activity_date, gurucls_user_id) select  'GENERALAUTO2', 'BAN_FINAID_C', sysdate, user from dual where not exists (select 1 from gurucls where gurucls_userid = 'GENERALAUTO2' and gurucls_class_code = 'BAN_FINAID_C');
            
-           Insert Into Guruobj(Guruobj_Object,Guruobj_Role,Guruobj_Userid,Guruobj_Activity_Date,
-              Guruobj_User_Id,Guruobj_Comments,Guruobj_Data_Origin)
-          select 'GURJOBS','BAN_DEFAULT_M','GENERALAUTO2',sysdate,user,'TEST','BANNER' from dual
-           where not exists (select 1 from guruobj
-                                Where Guruobj_Userid = 'GENERALAUTO2'
-                                  And Guruobj_Object = 'GURJOBS');
+          Insert Into Guruobj(Guruobj_Object,Guruobj_Role,Guruobj_Userid,Guruobj_Activity_Date, Guruobj_User_Id,Guruobj_Comments,Guruobj_Data_Origin) select 'GURJOBS','BAN_DEFAULT_M','GENERALAUTO2',sysdate,user,'TEST','BANNER' from dual where not exists (select 1 from guruobj Where Guruobj_Userid = 'GENERALAUTO2' and Guruobj_Object = 'GURJOBS');
            
-          insert into gurucls ( gurucls_userid, gurucls_class_code, gurucls_activity_date,
-                                gurucls_user_id)
-            select  'GENERALAUTO2', 'BAN_ADMIN_C', sysdate, user
-              from dual
-             where not exists (select 1 from gurucls
-                                where gurucls_userid = 'GENERALAUTO2'
-                                  and gurucls_class_code = 'BAN_ADMIN_C');
+          insert into gurucls ( gurucls_userid, gurucls_class_code, gurucls_activity_date, gurucls_user_id) select  'GENERALAUTO2', 'BAN_ADMIN_C', sysdate, user from dual where not exists (select 1 from gurucls where gurucls_userid = 'GENERALAUTO2' and gurucls_class_code = 'BAN_ADMIN_C');
+
           Commit;
            
           grant select on GUBINST to GENERALAUTO2;
           grant create session to GENERALAUTO2;
-        /
+
+        END;
       </SQL_CODE>
     </PERFORMANCE_SQL>
 </PERFORMANCE>
