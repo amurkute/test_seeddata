@@ -4,9 +4,9 @@ Copyright 2017 Ellucian Company L.P. and its affiliates.
  ********************************************************************************* -->
 <PERFORMANCE>
     <PERFORMANCE_SQL>
+      <BANSECR>YES</BANSECR>
       <SQL_CODE>
         BEGIN
-          EXECUTE IMMEDIATE 'conn bansecr/u_pick_it';
           EXECUTE IMMEDIATE 'create user GENERALAUTO2 identified by u_pick_it';
           EXECUTE IMMEDIATE 'grant connect, resource, ban_default_m, ban_default_q to GENERALAUTO2';
           EXECUTE IMMEDIATE 'alter user GENERALAUTO2 grant connect through banproxy';
