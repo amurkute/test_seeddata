@@ -6,12 +6,10 @@ Copyright 2017 Ellucian Company L.P. and its affiliates.
     <PERFORMANCE_SQL>
       <SQL_CODE>
         BEGIN
-          conn bansecr/u_pick_it;
           create user GENERALAUTO2 identified by u_pick_it;
           grant connect, resource, ban_default_m, ban_default_q to GENERALAUTO2;
-          alter user GENERALAUTO2 grant connect through banproxy ;
+          alter user GENERALAUTO2 grant connect through banproxy;
            
-          -- create banner security rules for all product classes
           insert into gurucls ( gurucls_userid, gurucls_class_code, gurucls_activity_date, gurucls_user_id) select  'GENERALAUTO2', 'BAN_GENERAL_C', sysdate, user from dual where not exists (select 1 from gurucls where gurucls_userid = 'GENERALAUTO2' and gurucls_class_code = 'BAN_GENERAL_C');
           
           insert into gurucls ( gurucls_userid, gurucls_class_code, gurucls_activity_date, gurucls_user_id) select  'GENERALAUTO2', 'BAN_STUDENT_C', sysdate, user from dual where not exists (select 1 from gurucls where gurucls_userid = 'GENERALAUTO2' and gurucls_class_code = 'BAN_STUDENT_C'); 
