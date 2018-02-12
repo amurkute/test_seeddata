@@ -30,8 +30,8 @@ Copyright 2017 Ellucian Company L.P. and its affiliates.
 
           Commit;
            
-          grant select on GUBINST to GENERALAUTO2;
-          grant create session to GENERALAUTO2;
+          EXECUTE IMMEDIATE 'grant select on GUBINST to GENERALAUTO2';
+          EXECUTE IMMEDIATE 'grant create session to GENERALAUTO2';
 
         END;
       </SQL_CODE>
