@@ -6,6 +6,7 @@ Copyright 2017 Ellucian Company L.P. and its affiliates.
     <PERFORMANCE_SQL>
       <SQL_CODE>
         BEGIN
+          EXECUTE IMMEDIATE 'conn bansecr/u_pick_it';
           EXECUTE IMMEDIATE 'create user GENERALAUTO2 identified by u_pick_it';
           EXECUTE IMMEDIATE 'grant connect, resource, ban_default_m, ban_default_q to GENERALAUTO2';
           EXECUTE IMMEDIATE 'alter user GENERALAUTO2 grant connect through banproxy';
@@ -32,6 +33,7 @@ Copyright 2017 Ellucian Company L.P. and its affiliates.
            
           EXECUTE IMMEDIATE 'grant select on GUBINST to GENERALAUTO2';
           EXECUTE IMMEDIATE 'grant create session to GENERALAUTO2';
+
 
         END;
       </SQL_CODE>
