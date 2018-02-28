@@ -1,0 +1,742 @@
+/*TMCI18N BEGIN HEADER*/
+#if !defined( tmBundle_EXISTS )
+/* No Initialisation Required */                                               
+#include "tmcilib.h"
+static struct TMBundle tmBundle = {"guaorac2.pc",NULL,NULL,NULL,NULL};
+#define tmBundle_EXISTS
+#endif
+/*TMCI18N END HEADER*/
+
+/* AUDIT_TRAIL_MSGKEY_UPDATE
+-- PROJECT : MSGKEY
+-- MODULE  : GUAORAC2
+-- SOURCE  : enUS
+-- TARGET  : I18N
+-- DATE    : Mon Nov 09 09:48:26 2015
+-- MSGSIGN : #8f1fdd18e7eb0cbf
+END AUDIT_TRAIL_MSGKEY_UPDATE */
+
+/* AUDIT_TRAIL_SCB
+-- Solution Centre Baseline 
+-- PROJECT : BAN74c
+-- MODULE  : GUAORAC2
+-- SOURCE  : enUS
+-- TARGET  : I18N
+-- DATE    : Mon Mar 19 12:47:09 2007
+END AUDIT_TRAIL_SCB */
+/* Object: guaorac2.pc
+   Author: John Morgan
+ Mod Date: 4/25/94
+  Release: General 2.1
+*/
+/****************************************************************************/
+/* guaorac2.pc Copyright 1994-2015 Ellucian Company L.P. and its affiliates */
+/****************************************************************************/
+/*                                                                          */
+/* Copyright 1994-2015 Ellucian Company L.P. and its affiliates.            */
+/*                                                                          */
+/****************************************************************************/
+/*                                                                          */
+/* AUDIT TRAIL: 2.1                                INIT      DATE           */
+/*                                                                          */
+/* 1. New file - code originally part of guaorac.c  JWM    04/25/94         */
+/*                                                                          */
+/* AUDIT TRAIL: 2.1.5                              INIT      DATE           */
+/*                                                                          */
+/* 1. Modified dberror to accept __FILE__ and       JWM    05/18/95         */
+/*    __LINE__ to provide better error reporting.                           */
+/* 2. Security mods to login processing - added     JWM    08/15/95         */
+/*    setrole function.                                                     */
+/* 3. Added loglimit function to allow setting      JWM    08/17/95         */
+/*    of maximum login attempts programatically.                            */
+/*                                                                          */
+/* AUDIT TRAIL: 2.1.11                             INIT      DATE           */
+/*                                                                          */
+/* 1. Modified dberror to use size_t for            JWM    09/08/96         */
+/*    declarations to prevent core dump                                     */
+/*    on Digital UNIX.                                                      */
+/* 2. Added setglob and dateconv for century        JWM    09/19/96         */
+/*    pivot handling.                                                       */
+/*                                                                          */
+/* AUDIT TRAIL: 3.0                                                         */
+/* 1. Replaced PL/SQL comments syntax (--) with      AP    07/02/97         */
+/*    C comments syntax.                                                    */
+/*                                                                          */
+/* AUDIT TRAIL: 3.1                                                         */
+/* 1. Move sysdate function from guastdf.c to guaorac2.pc  RLH 02/25/98     */
+/*    The sysdate function in guastdf.c was renamed to lsysdate.            */
+/*    Here sysdate emulates the behavior of the guastdf lsysdate            */
+/*    but it eliminates the problem of different dates on the               */
+/*    client and server. Sysdate is now a shell around a select...          */
+/*    from dual and any valid format items usable by to_char on a           */
+/*    date field.  lsysdate uses ANSI time.h.                               */
+/*                                                                          */
+/* AUDIT TRAIL: 6.0                                                         */
+/* 1. HCheng                                               10/24/2002       */
+/*    Defect# 81101                                                         */
+/*    Problem:                                                              */
+/*       If Oracle Password Management features have been implemented,      */
+/*       running jobs from GJAPCTL may get errors in the logs and the       */
+/*       jobs may not run within oracle password grace period.              */
+/*    Resolution:                                                           */
+/*       Modified function login(void) by changing IF logic on checking     */
+/*       CONNECT result as following:                                       */
+/*       old:  if ( sqlca.sqlcode == 0 )                                    */
+/*       new:  if ( sqlca.sqlcode == 0 || sqlca.sqlcode ==28002 )           */
+/*                                                                          */
+/* AUDIT TRAIL: 7.0                                                         */
+/* 1. Moved most logic from dberror to dberror_api and       JWM   03/19/04 */
+/*    added support to dberror_api for populating API                       */
+/*    error message globals; also added p_commit and                        */
+/*    p_rollback functions.                                                 */
+/* 2. Changed gb_messaging to gb_event.                      JWM   09/22/04 */
+/*    to ALL ROWS if database running in any CBO mode.                      */
+/*                                                                          */
+/* AUDIT TRAIL: 7.2                                                         */
+/* 1. Added new function setopt to change optimizer mode     JWM   08/23/05 */
+/*    to ALL_ROWS if database running in any CBO mode                       */
+/*    (part of Oracle10g support.)                                          */
+/*                                                                          */
+/* AUDIT TRAIL: 7.4                                                         */
+/* 1. Added setvpd() function for mif support                 RK   09/23/06 */
+/*                                                                          */
+/* AUDIT TRAIL: 8.0                                                         */
+/* TAM 10/08/2007                                                           */
+/* 1. Internationalization unicode conversion                               */
+/*                                                                          */
+/* AUDIT TRAIL: 8.2                                                         */
+/* 1. TGKinderman 04/09/2009                                                */
+/*    Modifications in support of i18n flex date for job submission         */
+/*    In login() right after the logic for call to setopt(), add logic to   */
+/*    establish date format from the environment variable NLS_DATE_FORMAT   */
+/*                                                                          */
+/* AUDIT TRAIL: 8.3.0.2                                                     */
+/* 1. Defect 1-8LNTI6                                      LVH  02/18/2010  */
+/*    Updated dateconv to return the input if it were null. This check is   */
+/*    needed in certain environments, including Solaris 64 bit              */
+/*                                                                          */
+/* AUDIT TRAIL: 8.7.4.1                                                      */
+/* 1. Defect CR-000122462                                  RG   02/23/2015  */
+/*    Problem : Variable width definition truncates VPDI codes that are six */
+/*              characters.                                                 */
+/*    Fix     : Changed vpdi_cd[6] to vpdi_cd[7] to support 6 chars length  */
+/*              VPDI code in setvpd() function.                             */
+/* 2. Defect CR-000119983                                  RG   02/23/2015  */
+/*    Problem 1 : After implementing MEP VPD in Banner database the jobsub C*/
+/*              programs are hanging.                                       */
+/*    Fix     : Below changes are done in setvpd() function :               */
+/*              1) Declared new variable static TMCHAR lv_one_up_no[10]={0};*/
+/*              2) copied one_up_number value to variable lv_one_up_no.     */
+/*              3) Referenced variable lv_one_up_no in cursor cursor_gjbvpdi*/
+/*                 instead of one_up_number.                                */
+/*              4) Changed line static TMCHAR*   one_up_number; to below    */
+/*                 static TMCHAR*   one_up_number = NULL;                   */
+/*                                                                          */
+/* AUDIT TRAIL: 8.8                                                         */
+/* 1. Defect CR-000128147                                  DJD  04/06/2015  */
+/*    Updated login function in support of Job Submission Proxy. It now     */
+/*    checks if user_pass starts with '[' and inserts '@' after the '/' if  */
+/*    it does.                                                              */
+/*                                                                          */
+/* AUDIT TRAIL: 8.8.2.1                                                    */
+/* 1. Defect CR-000135514                                  DJD  10/30/2015  */
+/*    Defect CR-000135132                                                   */
+/*    Jobs that start listeners fail to start correctly when run with the   */
+/*    job submission proxy wallet. The user_pass should only have the       */
+/*    the '@' inserted if it is not already present. login function updated */
+/*    to support this.                                                      */
+/* AUDIT TRAIL END                                                          */
+
+#include "guastdf.h"
+#include "guanlsl.h"
+#define _GUAORAC2_PC_
+EXEC SQL INCLUDE guaorac.c;
+#include "guassed.h"
+
+/* macros */
+
+#define MAX_LOGIN_LIMIT 10
+#define DFLT_LOGIN_LIMIT 3
+/* Internal prototypes */
+
+void setrole(void);
+void setopt(void);
+
+/* ORACLE login routine - if a userid/password was entered by the user
+   on the command line or some other method, copy this string into
+   the variable user_pass before calling login.  The function loglimit is
+   called to find out how many attempts should be possible before failing
+   with an error.
+*/
+
+
+void login(void)
+{
+  int i;
+  TMCHAR password[31];
+  TMCHAR8 *user_pass8;
+
+  TMCHAR user_buf[62]={0};
+  int ndx;
+  int slash_found;
+  int needs_formatting = FALSE;
+
+  TMCHAR cmdstr[100]={0}/*TMCI18N CHANGED FROM ""*/;
+
+  for ( i=0 ; i<loglimit(0) ; i++ )
+    {
+      /* only get a username first time through if user did not */
+      /* provide a login string */
+
+      if ( i || !tmstrlen(user_pass) )
+        input(user_pass,TM_NLS_Get("0000","Username: "),61,0);
+
+      if ( !tmstrchr(user_pass,'/') && tmstrlen(user_pass))
+        {
+          input(password,TM_NLS_Get("0001","Password: "),30,0);
+          tmstrcat(user_pass,_TMC("/"));
+          tmstrcat(user_pass,password);
+        }
+        
+      /* insert an '@' after the '/' in user_pass when using Job Submission */
+      /* Proxy so password is interpreted as a TNS alias                    */
+      if(user_pass[0] == '[')
+        {
+          for(ndx = 0, slash_found = FALSE; ndx < tmstrlen(user_pass); ndx++)
+            {
+              if(!slash_found && user_pass[ndx] == '/')
+                {
+                  slash_found = TRUE;
+                  
+                  /* make sure user_pass needs formatting before making     */
+                  /* changes to it                                          */
+                  needs_formatting = (user_pass[ndx+1] != '@');
+                  if( needs_formatting )
+                    {
+                      tmstrncpy(user_buf, user_pass, ndx+1);
+                      user_buf[ndx+1] = '@';
+                    }
+                  else 
+                    break;
+                }
+              else if(slash_found)
+                {
+                  user_buf[ndx+1] = user_pass[ndx];
+                }
+            }
+          if( needs_formatting )
+            {
+              tmstrcpy(user_pass, user_buf);
+            }
+        }
+
+      /* TMCI18N MANUAL CHANGE oracle password must be 8 bit*/
+      user_pass8=tmtochar8(user_pass);
+      /*EXEC SQL CONNECT :user_pass;*/
+      EXEC SQL CONNECT :user_pass8;
+
+      if ( sqlca.sqlcode == 0 || sqlca.sqlcode ==28002 )
+        {
+          prtmsg(CONNECT);
+
+          /* Now that we have successfully connected to ORACLE, do
+             some housekeeping.  First, tell ORACLE to keep a copy
+             of the SQL statement in the ORACA on WARNING or above,
+             and then register the dbexit function so that exit2os
+             will cleanup at execution end.
+          */
+
+          oraca.orastxtf=ORASTFWRN;
+          regexit(dbexit);
+
+          /* Security processing now that login is successful */
+
+          setrole();
+
+          /* set institutional globals */
+
+          setglob();
+
+          /* grab the API_ERROR code */
+
+          EXEC SQL EXECUTE
+            BEGIN :messaging_app_error := gb_event.app_error;
+            END;
+          END-EXEC;
+
+          /* Under CBO execute batch jobs in ALL_ROWS mode */
+
+          setopt();
+
+          /* i18n fix - specify date format from environment */
+          if (getenv("NLS_DATE_FORMAT") != NULL)
+          {
+            TMCHAR date_format[31];
+            tmstrcpy(date_format,ORA_NLS_DATE_FORMAT);          
+            EXEC SQL EXECUTE
+              BEGIN
+                g$_date.set_nls_date_format(:date_format);
+              END;
+            END-EXEC;
+          }
+
+          return;
+        }
+      tmfprintf(&tmBundle, tmstderr,_TMC("{0,% .70s}\n"),_TMV(sqlca.sqlerrm.sqlerrmc));
+    }
+
+  prtmsg(NOLOGIN,loglimit(0));
+}
+
+void setvpd(void)
+{
+    static TMCHAR*   one_up_number = NULL;   /*08070401*/
+    static TMCHAR   vpdi_cd[7];              /*08070401*/
+    static TMCHAR*   env_vpdi_cd;
+    static int mif_flag =0;
+	static TMCHAR   lv_one_up_no[10]={0};    /*08070401*/
+
+    EXEC SQL EXECUTE
+       BEGIN
+       IF   G$_VPDI_SECURITY.G$_IS_MIF_ENABLED THEN
+           :mif_flag := 1;
+       ELSE
+           :mif_flag := 0;
+       END IF;
+       END;
+    END-EXEC;
+ 
+    if (mif_flag)
+    {
+    #if OPSYS==OS_WINNT
+        one_up_number = tmgetenv(_TMC("SCTBAN_ONEUP_NUMBER"));
+    #elif OPSYS==OS_VMS
+        one_up_number = tmgetenv(_TMC("SEQ"));
+    #else
+        one_up_number = tmgetenv(_TMC("ONE_UP"));
+    #endif    
+ 
+if (one_up_number != NULL)
+    {
+      tmstrcpy(lv_one_up_no, one_up_number); /*08070401*/
+	  
+	  EXEC SQL DECLARE cursor_gjbvpdi CURSOR FOR
+      SELECT GJBVPDI_VPDI_CODE FROM GJBVPDI
+             WHERE GJBVPDI_ONE_UP_NO = :lv_one_up_no; /*08070401*/
+      EXEC SQL OPEN cursor_gjbvpdi;
+      EXEC SQL FETCH cursor_gjbvpdi INTO :vpdi_cd;
+      EXEC SQL CLOSE cursor_gjbvpdi;
+    EXEC SQL EXECUTE
+      BEGIN
+        IF :vpdi_cd is not null THEN
+           GOKVPDA.p_set_vpdi_for_update(:vpdi_cd);
+        ELSE
+           GOKVPDA.P_SET_VPDI_FOR_JOBS_DEFAULT;
+        END IF;
+      END;
+    END-EXEC;
+    }
+    else
+    {
+    env_vpdi_cd = tmgetenv(_TMC("MIF_CODE"));
+    EXEC SQL EXECUTE
+      BEGIN
+        IF :env_vpdi_cd is not null THEN
+           GOKVPDA.p_set_vpdi_for_update(:env_vpdi_cd);
+        ELSE
+           GOKVPDA.P_SET_VPDI_FOR_JOBS_DEFAULT;
+        END IF;
+      END;
+    END-EXEC;
+    }
+  }
+}
+
+/* loglimit is used to set or query the current setting for maximum login
+   attempts.  To query, call with a parameter of 0; to set, call with a
+   value in the range 1 <= num <= MAX_LOGIN_LIMIT.  An attempt to set to
+   a value outside this range will set the login limit to DFLT_LOGIN_LIMIT.
+   In all cases the current login limit is returned.
+*/
+
+int loglimit(int num)
+{
+  static cur_limit = DFLT_LOGIN_LIMIT;
+
+  if ( num < 0 || num > MAX_LOGIN_LIMIT )
+    cur_limit = DFLT_LOGIN_LIMIT;
+  else if ( num )
+    cur_limit = num;
+
+  return cur_limit;
+}
+
+/* dberror is called via the POSTORA macro, and calls dberror_api in the
+   "legacy" mode; i.e., fail on any negative value of sqlcode. See the comments
+   on dberror_api below for additional information.
+*/
+
+void dberror(TMCHAR *fname,long lineno)
+{
+  dberror_api(fname,lineno,FALSE);
+}
+
+/* dberror_api is called by either the POSTORA_API macro or the dberror
+   function. In the event of an Oracle error, it prints out the ORACLE
+   error message and, if available, the first 70 characters of the
+   offending SQL statement; note that this is the last SQL statement parsed,
+   not necessarily the statement in error. If the return_on_api_error parm
+   is TRUE and sqlcode==messaging_app_error, then the function will return
+   TRUE to the caller after populating the API error globals; otherwise
+   exit2os is called to terminate the program.
+
+   The API globals populated are:
+
+   api_error_long - full error string (up to 513 bytes)
+   api_error_count - number of entries in api_error_list
+   api_error_list - array of char pointers to individual error messages
+*/
+
+int dberror_api(TMCHAR *fname,long lineno,int return_on_api_error)
+{
+  TMCHAR buffer[513];
+  size_t bufsize=513,msglen;
+  TMCHAR *p;
+  TMCHAR *api_error_list_int[50];
+  int api_error_count_int;
+  int i;
+
+  sqlglm(buffer,&bufsize,&msglen);
+  buffer[msglen]='\0';
+
+  /* if error is not an api error, or if it is an API error and
+     the return_on_api_error flag is TRUE, then print out error and quit
+  */
+
+  if ( (sqlca.sqlcode == messaging_app_error && !return_on_api_error) ||
+        sqlca.sqlcode != messaging_app_error )
+    {
+      tmfprintf(&tmBundle, tmstderr,_TMC("\n{0}\n"),buffer);
+      prtmsg(ORACERR,fname,lineno);
+      if ( oraca.orastxt.orastxtc[0] )
+        {
+          tmmemcpy(buffer,_TMV(oraca.orastxt.orastxtc),70);
+          buffer[oraca.orastxt.orastxtl]='\0';
+          prtmsg(ERRSTMT,buffer);
+        }
+      exit2os(EXIT_FAILURE);
+    }
+
+  /* replace newlines in the buffer with blanks for better app handling */
+
+  p=buffer;
+  while ( (p=tmstrchr(p,'\n')) != NULL )
+    *p++ = ' ';
+
+  tmstrcpy(api_error_long,buffer);
+  tmstrcpy(api_error_copy,buffer);
+
+  /* populate the api_error_list_int */
+
+  api_error_count_int = 0;
+  for ( p=api_error_copy ; *p ; )
+    {
+      while ( *p == ':' )
+        p++;
+      if ( !*p )
+        break;
+      api_error_list_int[api_error_count_int++] = p;
+      if ( (p = tmstrstr(p,_TMC("::"))) == NULL)
+        break;
+      *p++ = '\0';
+    }
+
+  /* move only non-Oracle messages to the api_error_list */
+
+  api_error_count = 0;
+  for ( i=0 ; i<api_error_count_int ; i++ )
+    if ( !tmstrstr(api_error_list_int[i],_TMC("ORA-")) )
+      api_error_list[api_error_count++] = api_error_list_int[i];
+
+  return TRUE;
+}
+
+/* dbexit is called from exit2os to either COMMIT or ROLLBACK pending
+   work and then logoff the database.
+*/
+
+void dbexit(int exit_status)
+{
+  if ( exit_status==EXIT_SUCCESS )
+    p_commit();
+  else
+    p_rollback();
+}
+
+/* p_commit and p_rollback functions to simplify calling the necessary API
+   procedures
+*/
+
+void p_commit(void)
+{
+  EXEC SQL EXECUTE
+    BEGIN gb_common.p_commit;
+    END;
+  END-EXEC;
+}
+
+void p_rollback(void)
+{
+  EXEC SQL EXECUTE
+    BEGIN gb_common.p_rollback;
+    END;
+  END-EXEC;
+}
+
+/* Function to set role for 2.1.5 security processing; C variables declared
+   external to function in order to get PL/SQL block to compile.  The structure
+   exefile must be populated via a call to getxname (located in guastdf)
+   prior to calling setrole; this is done automatically if the rptopen
+   function in the guarfpe package is used.
+*/
+
+EXEC SQL BEGIN DECLARE SECTION;
+  /*TMCI18N MANUAL CHANGE: Make object_name a 8 bit variable
+  static TMCHAR object_name[31];
+  */
+  static TMCHAR8 object_name[31];
+  static long secret_seed1 = SECRET_SEED1;
+  static long secret_seed3 = SECRET_SEED3;
+EXEC SQL END DECLARE SECTION;
+
+void setrole(void)
+{
+  TMCHAR object_name_tmp[31];
+
+  setvpd();
+
+/* derive an uppercase version of the executable filename */
+
+/* TMCI18N Manual Mod. object name wants an 8 bit value
+  str2uc(tmstrcpy(object_name,exefile.name));
+*/
+  str2uc(tmstrcpy(object_name_tmp,exefile.name));
+  strcpy(object_name,tmtochar8(object_name_tmp));
+
+  /*TMCI18N Manual Mod. End*/
+
+  EXEC SQL EXECUTE
+  DECLARE
+
+    /* Character string variables.  */
+    HOLD_CMD               VARCHAR2(240);
+    OBJECT                 VARCHAR2(30);
+    PASSWORD               VARCHAR2(30);
+    PASSWORD_OUT           VARCHAR2(30);
+    ROLE_NAME              VARCHAR2(30);
+    VERSION                VARCHAR2(10);
+
+    /* Number variables.  */
+    SEED1                  NUMBER(8);
+    SEED3                  NUMBER(8);
+
+    /* Begin main logic.  */
+  BEGIN
+    OBJECT := :object_name;
+    SEED1  := :secret_seed1;
+    SEED3  := :secret_seed3;
+    VERSION := NULL;
+
+    /* Obtain encrypted password.  */
+    G$_SECURITY.G$_VERIFY_PASSWORD1_PRD(OBJECT,
+                                        VERSION,
+                                        PASSWORD,
+                                        ROLE_NAME);
+
+    /* Check security status.  */
+    IF PASSWORD = 'INSECURED' THEN
+      RETURN;
+    END IF;
+
+    /* Call for second phase processing.  */
+    PASSWORD_OUT := G$_SECURITY.G$_DECRYPT_FNC(PASSWORD,
+					       SEED3);
+    PASSWORD := PASSWORD_OUT;
+
+    /* Call for third phase processing.  */
+    G$_SECURITY.G$_VERIFY_PASSWORD1_PRD(OBJECT,
+                                        VERSION,
+                                        PASSWORD,
+                                        ROLE_NAME);
+
+    /* Call for fourth phase processing. */
+    PASSWORD_OUT := G$_SECURITY.G$_DECRYPT_FNC(PASSWORD,
+                                               SEED1);
+    PASSWORD := '"' || PASSWORD_OUT || '"';
+
+    /* Invoke needed role. */
+    HOLD_CMD := ROLE_NAME || ' IDENTIFIED BY ' || PASSWORD;
+    DBMS_SESSION.SET_ROLE(HOLD_CMD);
+
+    /* Clear variables.  */
+    HOLD_CMD := NULL;
+    OBJECT := NULL;
+    PASSWORD := NULL;
+    PASSWORD_OUT := NULL;
+    ROLE_NAME := NULL;
+    SEED1 := 0;
+    SEED3 := 0;
+    :secret_seed1 := 0;
+    :secret_seed3 := 0;
+  END;
+
+  END-EXEC;
+
+  POSTORA;
+}
+
+/* setglob sets global variables from tables such as gubinst */
+
+void setglob(void)
+{
+  /* default pivot date (if nothing in gubinst) */
+
+  cenpivot = 28;
+
+  /* now retrieve the pivot if there is one */
+
+  EXEC SQL select gubinst_century_pivot
+             into :cenpivot
+             from gubinst
+            where gubinst_key = 'INST'
+              and gubinst_century_pivot is not null;
+  POSTORA;
+}
+
+/* setopt sets optimizer mode to ALL_ROWS unless optimizer is set to RULE */
+
+void setopt(void)
+{
+  TMCHAR curopt[31];
+
+  /* retrieve current optimizer mode */
+
+  EXEC SQL EXECUTE
+    BEGIN
+      :curopt := genutil.get_db_optimizer_mode;
+    END;
+  END-EXEC;
+
+  /* return if optimizer mode is RULE */
+
+  if ( !tmstrcmp(curopt,_TMC("RULE")) )
+    return;
+
+  /* otherwise set to ALL_ROWS */
+
+  EXEC SQL ALTER SESSION SET OPTIMIZER_MODE=ALL_ROWS;
+}
+
+/* dateconv takes a char-string date field in Oracle format DD-MON-YY or
+   DD-MON-YYYY, and uses the global cenpivot to convert it to a date with
+   century.  If the date parameter already includes a century, no change is
+   made; if the year is less than the pivot point, then century is 2000,
+   else the century is 1900.  The date parameter should be large enough to
+   hold two additional characters in case a century is added.  The date is
+   modified in place, and a pointer to it is returned.  If there is a
+   problem with the parameters, then the original date is unchanged.
+
+   E.g.:
+
+     char my_date[12]="9-Jun-96";
+
+     printf("%s\n",dateconv(my_date));
+
+   Output would be:
+
+     9-Jun-1996
+*/
+
+TMCHAR *dateconv(TMCHAR *date)
+{
+  TMCHAR temp[100];
+  TMCHAR *cent=NULL;
+  int iyear,last,yd,yp;
+
+  /* first, validate source */
+  /* if the input is null, then just return the input. */
+  if ( (last=tmstrlen(date)) < 1 )
+    return date;
+
+  if ( (last=tmstrlen(date)) > 99 )
+    return date;
+
+  tmstrcpy(temp,date);
+
+  --last;
+  if (ORA_NLS_DATE_FORMAT[0]=='Y' || ORA_NLS_DATE_FORMAT[0]=='R')
+  { /* Year first */
+    for (yd=0;yd<4 && isdigit(temp[yd]);yd++);
+    yp=0;
+  }
+  else
+  {
+    for (yd=0;yd<4 && isdigit(temp[last-yd]);yd++);
+    yp=last-yd+1;
+  }
+  if (yd==2) 
+  {
+    /* add a century to year based on pivot, if no century present */
+
+    iyear = tmatoi(temp+yp);
+    if ( iyear <= 99 )
+      {
+        if ( iyear < cenpivot )
+          cent=_TMC("20");
+        else
+          cent=_TMC("19");
+      }
+    if (cent) 
+    {
+      tmstrcpy(date+yp,cent);
+      tmstrcat(date+yp+tmstrlen(cent),temp+yp);
+    }
+  }
+  return date;
+}
+
+/* sysdate is in effect a simple shell around a select .... from dual
+   with a specific format usable by to_char on a date field.
+   The format will be passed through unchanged.
+*/
+
+
+TMCHAR *sysdate(TMCHAR *outdate,TMCHAR *format)
+{
+EXEC SQL BEGIN DECLARE SECTION;
+  TMCHAR date_format[81]={0}/*TMCI18N CHANGED FROM ""*/;
+  static TMCHAR hold_date[81];
+EXEC SQL END DECLARE SECTION;
+
+  /* If format argument provided, use it; otherwise default */
+
+  if (format == NULL)
+    tmstrcpy(date_format,DEFAULT_DATE_FORMAT);
+  else if (*format == '\0')
+    tmstrcpy(date_format,DEFAULT_DATE_FORMAT);
+  else
+    tmstrcpy(date_format,format);
+
+  /* now get the date */
+
+EXEC SQL  SELECT TO_CHAR(sysdate,:date_format)
+            INTO :hold_date FROM dual;
+  POSTORA;
+
+  if ( outdate )
+    {
+      tmstrcpy (outdate,hold_date);
+      return  outdate;
+    }
+  return hold_date;
+}

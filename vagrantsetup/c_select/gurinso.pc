@@ -1,0 +1,585 @@
+/*TMCI18N BEGIN HEADER*/
+#if !defined( tmBundle_EXISTS )
+/* No Initialisation Required */                                               
+#include "tmcilib.h"
+static struct TMBundle tmBundle = {"gurinso.pc",NULL,NULL,NULL,NULL};
+#define tmBundle_EXISTS
+#endif
+/*TMCI18N END HEADER*/
+
+/* AUDIT_TRAIL_MSGKEY_UPDATE
+-- PROJECT : MSGKEY
+-- MODULE  : GURINSO
+-- SOURCE  : enUS
+-- TARGET  : I18N
+-- DATE    : Fri Jan 09 11:00:55 2015
+-- MSGSIGN : #600205a80b5aed4a
+END AUDIT_TRAIL_MSGKEY_UPDATE */
+
+/* AUDIT_TRAIL_TM63
+-- TranMan 6.3 
+-- PROJECT : HEGDE_I18N
+-- MODULE  : GURINSO
+-- SOURCE  : enUS
+-- TARGET  : I18N
+-- DATE    : Sun Sep 30 08:15:13 2007
+END AUDIT_TRAIL_TM63 */
+
+/*****************************************************************************/
+/*                                                                           */
+/* Copyright 1994 - 2015 ellucian. All rights reserved.                      */
+/*                                                                           */
+/*****************************************************************************/
+
+#include "guastdf.h"
+#define MAXINPUT 2000
+#ifdef OPSYS_UNIX
+#include <libgen.h>
+#define OSIND _TMC("unix")
+#else
+#define OSIND _TMC("UNKNOWN")
+#endif
+/* ********************************************************************** */
+/*
+   AUDIT TRAIL: 3.0
+   1. TAM 05/20/97 - Genesis
+
+   AUDIT TRAIL: 3.1
+   1. SJQ 04/28/98
+      Remove the code which creates the gurinso.lis file since nothing
+      is ever written to it.
+
+   AUDIT TRAIL : 8.0 (I18N)
+   Description: Internationalization Unicode Conversion 
+   
+   AUDIT TRAIL: 8.1.0.1
+   1. EM 11/03/2008 - defect 1-42W01Z 
+    Description: Added code to read data from file in main if the 
+                 file reading is glrletr_n.doc    
+   AUDIT TRAIL: 8.2.0.1
+   1. Defect #:  1-56OECQ     EM      06/15/2009
+      Problem: While reading the data (lines) from the input file using the 
+               function tmfgets, the read operation is not performing
+               until new line character.As a result of this behavior 
+               data in a single line is divided into multiple lines. 
+      Solution:Added code to store the read data from the input file into 
+               a temporary variable until we get an occurrence of the 
+               new line character. When the read operation found any occurrence 
+               of the new line character, then the data stored in the 
+               temporary variable will be inserted to the guroutp table and 
+               clears the temporary variable to read the next.
+   AUDIT TRAIL: 8.3.1.1
+   1. EM 09/16/2010  
+      Defect # : 1-80VVRD & RPE 1-7ptlpw
+      Solution :Added code to insert the data to table guroutp 
+                if any data remaining in the temporary variable "wp_rec" after 
+                the reading process of input files.
+   2. EM 09/16/2010  
+      Defect # :1-4YSEZO & 1-8BSBOO
+      Solution :Added code to insert the data to table guroutp 
+                if the total length of data stored in variable "wp_rec" 
+                and the length of data read from inputfile using 
+                tmfgets( varaiable cInputLine) is more than 1999.
+   AUDIT TRAIL: 8.4                
+   1. EM 10/04/2010  
+      Defect # : 1-CPKH9I 
+      Solution :
+                 1) Added POSTORA after insert statment of table guboutp. 
+                 2) Added code to check if the Filename including path name 
+                    exceeds 80 character length. If exceeds, 
+                    then display message to shorten the name.
+                 3) Added code to check if the Filename  
+                    exceeds 60 character length. If exceeds, 
+                    then display message to shorten the name. 
+   AUDIT TRAIL : 8.4.2
+   1. TGKinderman  05/04/2011
+      Defect 1-CSSTSL
+      Problem: Database Extension Utility is to ensure tables have certain
+      columns (with appropriate data type/length). One of those columns is
+      _USER_ID VARCHAR2(30).  Tables GUBOUTP and GUROUTP, created some time
+      ago, were created with column _USER_ID NUMBER. The existance of this
+      column name collides with the objectives of the Database Extension
+      Utility.  
+      Solution: Existing columns (_USER_ID NUMBER) are being renamed to
+      GUBOUTP_USER_NUM and GUROUTP_USER_NUM, both of type NUMBER. Database
+      Extension Utility can subsequently add column _USER_ID VARCHAR2(30)
+      to both tables.
+
+   AUDIT TRAIL : 8.7.3
+   1. TGKinderman  10/08/2014
+      Defect 1-2D5A72
+      Modify in support of obtaining job processing credentials from the
+      filesystem. If password value passed as a positional argument is
+      NOTVALIDPASSWD then open the file indicated by argument parameter -y.
+      The File indicated by argument parameter -y will contain the credential
+      information. Otherwise use the credential information passed as
+      positional arguments.
+
+   AUDIT TRAIL: 8.8                                                           
+   1. Defect CR-000128147                                  DJD  04/06/2015    
+      Updated main function in support of Job Submission Proxy. It now       
+      checks if cUserName starts with '[' and acquires it from the database   
+      if it does.                                                                
+         */
+
+/* AUDIT TRAIL END
+
+   This program is intended to load the output from BANNER on-line job
+   submission into the database.
+
+   Required Command line switches:
+
+       -j Job/Process name that generated the listing
+       -l Input file - This is the listing to load into the DB
+       -n One up number from execution of batch program
+       -w Username Who ran the job
+
+   Optional Command line switches:
+
+       -o Specify Output file
+       -t Turn on sql_trace
+       -x Extended debugging; notifies entry to each function
+       -y login credentials in this file, if gjbjobs_creds_in_file is Y
+
+*/
+/* ********************************************************************** */
+EXEC SQL INCLUDE guaorac.c;
+
+EXEC SQL BEGIN DECLARE SECTION;
+  static TMCHAR cOpSys[11]={0}/*TMCI18N CHANGED FROM ""*/;
+  static TMCHAR cJobName[31]={0}/*TMCI18N CHANGED FROM ""*/;
+  static TMCHAR cUserName[31]={0}/*TMCI18N CHANGED FROM ""*/;
+  static TMCHAR cUserNameFromFile[31]={0}/*TMCI18N CHANGED FROM ""*/;
+  static TMCHAR cUserPassFromFile[62]={0}/*TMCI18N CHANGED FROM ""*/;
+
+  static BANNUMSTR(nOneUpNo)={0}/*TMCI18N CHANGED FROM ""*/;
+  static BANNUMSTR(nUserId)={0}/*TMCI18N CHANGED FROM ""*/;
+  static BANNUMSTR(nFileNo)={0}/*TMCI18N CHANGED FROM ""*/;
+  static TMCHAR cFileName[61]={0}/*TMCI18N CHANGED FROM ""*/;
+  static TMCHAR cInputLine[2000]={0}/*TMCI18N CHANGED FROM ""*/;
+  static TMCHAR csInCredsFile[255]={0}/*TMCI18N CHANGED FROM ""*/;
+  static TMCHAR csInCredsLine[61]={0}/*TMCI18N CHANGED FROM ""*/;
+   /* EXEC SQL VAR cInputLine IS STRING; */
+  static long lSeqNo=1L;
+EXEC SQL END DECLARE SECTION;
+
+/* shorthand macros to simplify access to complex data structures */
+#define CHECKIO if (tmferror(ofile)) prtmsg(IOERROR,outfile.fname);
+
+static FNSTRUC outfile;
+static FNSTRUC ListingFile;
+static UFILE *ofile;
+static UFILE *infile;
+static UFILE *incredsfile;
+static void progopen(TMCHAR *userpass,int argc,TMCHAR *argv[]);
+static void sleep_for_a_while(void);
+TMCHAR *set_file(TMCHAR *dir,TMCHAR *name,TMCHAR *ext,TMCHAR *vers);
+static void cmdhelp(void);
+extern short sqltrace_flag;
+extern short trace_flag;
+static TMCHAR csInputFile[255]={0}/*TMCI18N CHANGED FROM ""*/;
+static TMCHAR csInLine[2000]={0}/*TMCI18N CHANGED FROM ""*/;
+static TMCHAR wp_rec[2000]; 
+
+/* static int count=0; */
+
+/*------------------------------------------------------------------------*/
+/* Begin program execution.                                               */
+/*------------------------------------------------------------------------*/
+
+int main(int argc,TMCHAR *argv[])
+{
+
+  progopen(user_pass,argc,argv);
+
+  login();
+
+  if ( sqltrace_flag )
+    EXEC SQL ALTER SESSION SET SQL_TRACE TRUE;
+
+/*------------------------------------------------------------------------*/
+/* Make sure we can read the input file.                                  */
+/*------------------------------------------------------------------------*/
+
+  if  ((infile = tmfopen(&tmBundle, csInputFile,_TMC("r"))) == NULL)
+     {
+      tmprintf(&tmBundle, TM_NLS_Get("0000","Can't open Input File {0}\n"),csInputFile);
+      exit2os(EXIT_FAILURE);
+     }
+     
+ if  (tmstrlen(csInputFile)>80)
+ {
+ tmprintf(&tmBundle, TM_NLS_Get("0001","Filename including path name used exceeds 80 character length.Please shorten."));
+ exit2os(EXIT_FAILURE);
+ }
+     
+if  (tmstrlen(cFileName)>59)
+ {
+ tmprintf(&tmBundle, TM_NLS_Get("0002","Filename used exceeds 60 character length.Please shorten."));
+ exit2os(EXIT_FAILURE);
+ }  
+
+/*------------------------------------------------------------------------*/
+/* Uppercase the jobname and username before inserting the output         */
+/* into the database.                                                     */
+/*------------------------------------------------------------------------*/
+
+  str2uc(cUserName);
+  str2uc(cJobName);
+  
+  /* Acquire the username from the database instead of the command line */
+  /* when using Job Submission Proxy */
+  if(cUserName[0] == '[')
+    {
+      exec sql select user into :cUserName
+                 from dual;
+    }
+
+  tmstrcpy(cOpSys,OSIND);
+
+/*------------------------------------------------------------------------*/
+/* Get the numeric userid for the username from Oracle then insert the    */
+/* header row.                                                            */
+/*------------------------------------------------------------------------*/
+
+  exec sql select user_id into :nUserId
+             from all_users
+            where username = :cUserName;
+
+/*------------------------------------------------------------------------*/
+/* Get the next file number. File numbers are assigned sequentially. The  */
+/* log file (if there is one) should be file number 1. The listing should */
+/* be file number 2, etc.                                                 */
+/*------------------------------------------------------------------------*/
+
+  exec sql select nvl(max(guboutp_file_number),0) + 1 into :nFileNo
+             from guboutp
+            where guboutp_username  = :cUserName
+              and guboutp_user_num  = :nUserId
+              and guboutp_one_up_no = :nOneUpNo
+              and guboutp_job       = :cJobName;
+
+/*------------------------------------------------------------------------*/
+/* Insert the "header" for this output file.                              */
+/*------------------------------------------------------------------------*/
+
+  exec sql insert into guboutp
+      ( guboutp_username, guboutp_user_num, guboutp_one_up_no, guboutp_job,
+        guboutp_file_name, guboutp_file_number, guboutp_number_of_lines,
+        guboutp_date_saved, guboutp_date_printed, guboutp_operating_system)
+      values
+      ( :cUserName, :nUserId, :nOneUpNo, :cJobName,
+        :cFileName, :nFileNo, -1,
+        NULL, NULL, :cOpSys);
+        
+   POSTORA;      
+        
+
+/*------------------------------------------------------------------------*/
+/* Now read the input file and load it as is into the database.           */
+/* No manipulation of newline or formfeed characters is done.             */
+/*------------------------------------------------------------------------*/
+ 
+      /* Defect 1-42W01Z & 1-56OECQ */
+  lSeqNo=0L;
+  
+      while (tmfgets(cInputLine,MAXINPUT,infile) != NULL)  
+      {
+      
+      /* Defect 1-4YSEZO & 1-8BSBOO */
+            
+      if ((tmstrlen(wp_rec) + tmstrlen(cInputLine))>1999) 
+      {
+      lSeqNo++;
+      exec sql insert into guroutp
+           ( guroutp_user_num, guroutp_one_up_no, guroutp_file_number,
+           guroutp_seq_no, guroutp_line)
+           values
+           ( :nUserId, :nOneUpNo,:nFileNo,
+           :lSeqNo, :wp_rec); 
+           POSTORA;
+           tmstrcpy(wp_rec,_TMC(""));
+           }
+      
+     /* Defect 1-4YSEZO & 1-8BSBOO */
+    
+          if (tmstrstr(cInputLine,_TMC("\n"))!= NULL) 
+           {
+           tmstrcat(wp_rec,cInputLine);
+           lSeqNo++;
+           exec sql insert into guroutp
+           ( guroutp_user_num, guroutp_one_up_no, guroutp_file_number,
+           guroutp_seq_no, guroutp_line)
+           values
+           ( :nUserId, :nOneUpNo, :nFileNo,
+           :lSeqNo, :wp_rec); 
+           POSTORA;
+           tmstrcpy(wp_rec,_TMC(""));
+           }
+         else
+          {
+           tmstrcat(wp_rec,cInputLine);
+          }
+        }
+  
+  
+  /*1-80VVRD & RPE 1-7ptlpw */
+  if (tmstrcmp(wp_rec,_TMC(""))!=0)
+        {
+        tmstrcat(wp_rec,_TMC("\n"));
+        lSeqNo++;
+           exec sql insert into guroutp
+           ( guroutp_user_num, guroutp_one_up_no, guroutp_file_number,
+           guroutp_seq_no, guroutp_line)
+           values
+           ( :nUserId, :nOneUpNo, :nFileNo,
+           :lSeqNo, :wp_rec); 
+           POSTORA;
+        }
+  
+  
+ /*1-80VVRD & RPE 1-7ptlpw */
+
+/*------------------------------------------------------------------------*/
+/* Now update the header to reflect how many line are in the file.        */
+/*------------------------------------------------------------------------*/
+
+  exec sql update guboutp
+              set guboutp_number_of_lines = :lSeqNo,
+                  guboutp_date_saved  = sysdate
+            where guboutp_username    = :cUserName
+              and guboutp_user_num    = :nUserId
+              and guboutp_one_up_no   = :nOneUpNo
+              and guboutp_file_number = :nFileNo
+              and guboutp_job         = :cJobName;
+
+  tmfclose(infile);
+
+  exit2os(EXIT_SUCCESS);
+  return EXIT_SUCCESS;
+}
+
+static void sleep_for_a_while(void)
+{
+  EXEC SQL EXECUTE
+    DECLARE
+      LV_TIME NUMBER;
+    BEGIN
+      LV_TIME := 30;
+      DBMS_LOCK.SLEEP(LV_TIME);
+    EXCEPTION
+      WHEN OTHERS THEN
+        NULL;
+    END;
+  END-EXEC;
+}
+
+/*------------------------------------------------------------------------*/
+/* progopen takes three arguments, a char pointer, userpass, to a target  */
+/* for an ORACLE userid/password string, and argc and argv, intended      */
+/* to be passed unchanged from the command line.  The purpose of progopen */
+/* is to take care of various cleanup/setup chores necessary for every    */
+/* converted RPT, such as parsing the command line parms, opening the     */
+/* output file, etc.  The functions rptinit is also called to initialize  */
+/* various data structures for RPF emulation.                             */
+/*------------------------------------------------------------------------*/
+
+static void progopen(TMCHAR *userpass,int argc,TMCHAR *argv[])
+{
+  int cnt,i,next_arg;
+  TMCHAR *default_ext=_TMC("lis");  /* default extension for output file */
+  TMCHAR *ofile_name=NULL;
+
+  /* fill in the executable file name structure */
+
+  getxnam(*argv);
+
+  /* parse the command line parameters */
+
+  for ( cnt=1 ; cnt<argc && *argv[cnt] == '-' ; cnt++ )
+    if ( ! argv[cnt][1] )
+      cmdhelp();
+    else
+      for ( i=1,next_arg=FALSE ; argv[cnt][i] && !next_arg ; i++ )
+        switch(argv[cnt][i])
+          {
+            /* -t: sets a global flag so that application code will
+                   generate an ORACLE .trc file */
+            case 't' : sqltrace_flag=TRUE;
+                       break;
+            /* -o: specify an output file */
+            case 'o' : if ( argv[cnt][i+1] )
+                         cmdhelp();
+                       ofile_name=argv[++cnt];
+                       next_arg=TRUE;
+                       break;
+            /* -x: internal debugging trace tool - if .pc file generated
+                   with -x switch, this will cause each function to
+                   echo its name to stdout upon entry */
+            case 'x' : trace_flag=TRUE;
+                       break;
+            case 'n' : if ( argv[cnt][i+1] )
+                         cmdhelp();
+                       tmstrcpy(nOneUpNo,argv[++cnt]);
+                       next_arg=TRUE;
+                       break;
+            case 'j' : if ( argv[cnt][i+1] )
+                         cmdhelp();
+                       tmstrcpy(cJobName,argv[++cnt]);
+                       next_arg=TRUE;
+                       break;
+            case 'w' : if ( argv[cnt][i+1] )
+                         cmdhelp();
+                       tmstrcpy(cUserName,argv[++cnt]);
+                       next_arg=TRUE;
+                       break;
+            case 'l' : if ( argv[cnt][i+1] )
+                         cmdhelp();
+                       tmstrcpy(csInputFile,argv[++cnt]);
+                       next_arg=TRUE;
+                       break;
+            case 'y' : if ( argv[cnt][i+1] )
+                         cmdhelp();
+                       tmstrcpy(csInCredsFile,argv[++cnt]);
+                       next_arg=TRUE;
+                       break;
+            default  : cmdhelp();
+                       break;
+          }
+
+  /* make sure all required parms have been entered */
+
+  if ( !tmstrlen(nOneUpNo) || !tmstrlen(cJobName) || !tmstrlen(cUserName) ||
+       !tmstrlen(csInputFile))
+     cmdhelp();
+
+/* disassemble the input file name */
+
+  initfn(&ListingFile);
+  tmstrcpy(ListingFile.fname,csInputFile);
+  parsfn(&ListingFile);
+  tmstrcpy(ListingFile.dir,_TMC(""));
+  makefn(&ListingFile);
+  tmstrcpy(cFileName,ListingFile.fname);
+
+  /* create a valid output file name */
+
+  initfn(&outfile);
+  if ( ofile_name )     /* user specified output file */
+    {
+      tmstrcpy(outfile.fname,ofile_name);
+      parsfn(&outfile);
+      /* use default extension if user did not specify one */
+      if ( !*outfile.ext )
+        set_file(NULL,NULL,default_ext,NULL);
+    }
+  /* if user did not specify an output file, use the name of the executable
+     with the default extension */
+  else
+    set_file(NULL,exefile.name,default_ext,NULL);
+
+  /* after all switches parsed, the next argument is interpreted as an
+     ORACLE userid/password; any additional arguments cause an error
+  */
+
+  *userpass='\0';
+  if ( cnt==argc-1 )
+    tmstrcpy(userpass,argv[cnt]);
+  else if ( cnt!=argc )
+    cmdhelp();
+
+
+  /* **********************************************************************
+     Argument -y indicates filename to be opened. Read (obtain credential
+     information) from logical file gurinso_######.in if the test is
+     specific to the default password value of /NOTVALIDPASSWD
+     **********************************************************************
+  */
+
+  if ( tmstrstr(userpass,_TMC("/NOTVALIDPASSWD")) );
+    {
+      incredsfile = tmfopen(&tmBundle, csInCredsFile, _TMC("r"));
+      if (incredsfile)
+      {
+        tmfgets(csInCredsLine,sizeof(csInCredsLine),incredsfile);
+        tmstrncpy(cUserPassFromFile,csInCredsLine,tmstrlen(csInCredsLine) - 1);
+        tmstrcpy(userpass,cUserPassFromFile);
+     
+        tmfgets(csInCredsLine,sizeof(csInCredsLine),incredsfile);
+        tmstrncpy(cUserNameFromFile,csInCredsLine,tmstrlen(csInCredsLine) - 1);
+        tmstrcpy(cUserName,cUserNameFromFile);
+     
+        tmfclose(incredsfile);
+        incredsfile = NULL;
+      }
+    }
+
+
+  /* initialize data structures */
+/* 
+  3.1-1
+  if ( !(ofile=fopen(outfile.fname,prtmode())) )
+    prtmsg(IOERROR,outfile.fname);
+*/
+
+  prtmsg(PRGOPEN);
+
+
+/*   rptinit(); */
+
+  /* register function to free memory and close output file (moved from
+     rptinit so that sleep/wake will function properly)
+  */
+
+/*  regexit(rptclose); */
+}
+
+/*------------------------------------------------------------------------*/
+/* cmdhelp is called by progopen if an unrecognized command-line argument */
+/* is received; no arguments, and exits with EXIT_FAILURE on completion.  */
+/*------------------------------------------------------------------------*/
+static void cmdhelp(void)
+{
+  TMCHAR *msg[]={
+       _TMC("[-t] [-o output_file] [userid[/password]]"),
+       _TMC("       -j Job/Process name that generated the listing"),
+       _TMC("       -l Specify Input file - This is the listing to load into the DB"),
+       _TMC("       -o Specify Output file"),
+       _TMC("       -n One up number from execution of batch program"),
+       _TMC("       -t Turn on sql_trace"),
+       _TMC("       -w Username Who ran the job"),
+       _TMC("       -x Extended debugging; notifies entry to each function"),
+       _TMC(""),
+       _TMC(" NOTE: The -j -n and -w switches are REQUIRED to run this process"),
+       _TMC(""),
+       NULL};
+  int i;
+
+  tmprintf(&tmBundle, TM_NLS_Get("0003","\nUsage: {0} "),exefile.name);
+  for ( i=0 ; msg[i] ; tmputs(msg[i++]) );
+
+  exit2os(EXIT_FAILURE);
+}
+
+/*-------------------------------------------------------------------------*/
+/* set_file takes char pointers to directory, name, extension, and version */
+/* strings, and modifies the contents of the FNSTRUC variable outfile      */
+/* accordingly; any argument which is NULL results in no change to         */
+/* the corresponding outfile member.  A call to makefn reconstructs        */
+/* outfile.fname, and a pointer to fname is returned.                      */
+/*-------------------------------------------------------------------------*/
+
+TMCHAR *set_file(TMCHAR *dir,TMCHAR *name,TMCHAR *ext,TMCHAR *vers)
+{
+  if ( dir )
+    tmstrcpy(outfile.dir,dir);
+  if ( name )
+    tmstrcpy(outfile.name,name);
+  if ( ext )
+    tmstrcpy(outfile.ext,ext);
+  if ( vers )
+    tmstrcpy(outfile.vers,vers);
+  makefn(&outfile);
+
+  return outfile.fname;
+}

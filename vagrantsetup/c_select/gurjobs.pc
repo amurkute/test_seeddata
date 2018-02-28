@@ -1,0 +1,1645 @@
+/*TMCI18N BEGIN HEADER*/
+#if !defined( tmBundle_EXISTS )
+#define TM_ON_STARTUP tmInitGlobS_gurjobs
+#include "tmcilib.h"
+static struct TMBundle tmBundle = {"gurjobs.pc",NULL,NULL,NULL,NULL};
+#define tmBundle_EXISTS
+#endif
+/*TMCI18N END HEADER*/
+
+/* AUDIT_TRAIL_MSGKEY_UPDATE
+-- PROJECT : MSGKEY
+-- MODULE  : GURJOBS
+-- SOURCE  : enUS
+-- TARGET  : I18N
+-- DATE    : Fri Jan 30 08:27:33 2015
+-- MSGSIGN : #337428ed09fec5ff
+END AUDIT_TRAIL_MSGKEY_UPDATE */
+
+/* AUDIT_TRAIL_TM63
+-- TranMan 6.3
+-- PROJECT : HEGDE_I18N
+-- MODULE  : GURJOBS
+-- SOURCE  : enUS
+-- TARGET  : I18N
+-- DATE    : Mon Aug 20 06:25:40 2007
+END AUDIT_TRAIL_TM63 */
+/*****************************************************************************/
+/* gurjobs.pc                                                                */
+/*****************************************************************************/
+/*                                                                           */
+/* Copyright 1994-2015 Ellucian Company L.P. and its affiliates.             */
+/*                                                                           */
+/*****************************************************************************/
+/*                                                                           */
+/* AUDIT TRAIL: 2.1                                                          */
+/* 1. New application server program to receive commands                     */
+/*    from gjapctl.                                          TM 09/28/94     */
+/* AUDIT TRAIL: 2.X Supplemental                               JWM  12/12/94 */
+/* 1. Program modified by cfix.c to remedy mostly Pro*C related problems:    */
+/*    split SQL concatenations joined, colons added to FETCH targets,        */
+/*    file extensions added to SQL INCLUDEs, 'static' modifier removed from  */
+/*    indicator variables, new logic to hadle CLOSE_CURSOR was added to SQL  */
+/*    function wrappers, and object owner references were removed as part of */
+/*    BANNER2.1.  (Not all changes necessarily apply.)                       */
+/* AUDIT TRAIL: 2.1.5                                                        */
+/* 1. Print message when send results in non zero status.        TM 10/24/95 */
+/*---------------------------------------------------------------------------*/
+/* AUDIT TRAIL: 3.0                                                          */
+/* 1. TAM 06/02/97                                                           */
+/*    Added unix logic to look up a HOME directory for the userid submitting */
+/*    the job. Then append /jobsub to it and test to see if I can write to   */
+/*    a file there. If so, override HOME for the invocation of the shl.      */
+/*    Moved programming logic out of plsql blocks and into C code.           */
+/*    Added new test_home function to lookup the user's home in /etc/passwd. */
+/* 2. JWM 06/09/97                                                           */
+/*    Added logic to look up a HOME directory for VMS platforms.             */
+/* 3. TAM 06/20/97                                                           */
+/*    DEFECT-5838. Added loop logic to print the "Waiting for work..."       */
+/*    message every MAXCYCLE times thru.                                     */
+/* AUDIT TRAIL: 3.1                                                          */
+/* 1. RLH 03/20/98                                                           */
+/*    Increased max_size from 160 to 8192.                                   */
+/* 2. RRM 07/27/98                                                           */
+/*    Append a .pl to process name if perl is first part of command          */
+/*    *** ONLY if it is NOT There! ***                                       */
+/* AUDIT TRAIL: 4.0                                                          */
+/* 1. RLH 07/22/99                                                           */
+/*    Changed startup message to inform user what privileges are needed      */
+/*    to run this program.                                                   */
+/* AUDIT TRAIL: 5.2                                                          */
+/* 1. XL 04/09/01                                                            */
+/* Defect #14314                                                             */
+/* Title ...... clean up the lint errors                                     */
+/* Solutions... add return value in main function, comments unused variables */
+/* AUDIT TRAIL: 5.5                                                          */
+/* 1. HCheng 06/18/02                                                        */
+/* Defect #76269                                                             */
+/* Problem:  Job submission in VMS is creating a TEMP.COM file every time it */
+/*        is run, and doesn't clean up after itself. It will cause a problem.*/
+/*        when the version number reaches the maximum number allowable.      */
+/* Solution: After code 'system(command_string);', added deleting temp.com   */
+/*        substring in command_string for VMS.                               */
+/* AUDIT TRAIL: 6.0                                                          */
+/* 1.  G Shalovka  10 Oct 2002                                               */
+/*     Migrate updates to 6.0.                                               */
+/* AUDIT TRAIL: 6.1.2.1                                                      */
+/* 1. JWM 02/06/04                                                           */
+/*    Conditional include of errno.h to resolve Linux compile problem.       */
+/*    Defect 92535.                                                          */
+/* AUDIT TRAIL: 7.0                                                          */
+/* 1. RH  05/06/04                                                           */
+/*    Migrate 6.1.2.1 to 7.0.                                                */
+/* AUDIT TRAIL: 7.4                                                          */
+/* 1. LVH  10/06/06                                                          */
+/*    a. MIF enable job submision                                            */
+/*    b. added SunGard branding text                                         */
+/* AUDIT TRAIL : 		 (I18N)                                      */
+/* Description: Internationalization Unicode Conversion                      */
+/* 2. TAM  12/17/2007                                                        */
+/*    Program was getting ora-12704 errors at run time. Changed to use       */
+/*    GOKDBMS instead of DBMS_PIPE.            .                             */
+/* 3. TAM  03/13/2008                                                        */
+/*    Added #if OPSYS==OS_UNIX to tmInitGlobS_gurjobs(void)...               */
+/*    to solve NT compile error.               .                             */
+/* AUDIT TRAIL : 8.0 BETA                                                    */
+/* DEFECT: 1-3AKXVP                                                          */
+/* 1. TAM 01/11/2008                                                         */
+/* Changed DBMS_PIPE.RECEIVE_MESSAGE to GOKDBMS.PIPE_RECEIVE_MESSAGE.        */
+/* 2. Applied 7.5.0.1 fixes                                                  */
+/*    LVH 02/18/2008                                                         */
+/*    a. Defect #1-3AYTP1 - VMS only - gurjobs.pc is building temp.com file  */
+/*       without the proper DCL syntax "$"                                   */
+/*    b. Defect #1-3ATPYH - VMS only - GURJOBS output is going to incorrect  */
+/*       GJAJPRF directory due to non-initialized variables between jobs.    */
+/*    c. Defect #1-2WH6DK - VMS only - GURJOBS can run the same job 2 times  */
+/*       with the same parameters and run sequence number.                   */
+/*    d. Defect #1-M8RNX - UNIX only - gurjobs does not handle a trailing    */
+/*       "/" in GURJOBS_DIRECTORY properly.                                  */
+/* AUDIT TRAIL : 8.1                                                         */
+/* SKP 07/25/2008                                                            */
+/* DEFECT:1-3IJTLJ                                                           */
+/* IMPACT:After you submit a long running process the GJAPCTL the screen     */
+/*	will hang until	process completes and if anyone else on system       */
+/*	submits a job during that time they will get an error message 	     */
+/*	related to *Error*:  Timed out waiting for response from job 	     */
+/*	submission program.                                                  */
+/* SOLUTION: Added code on 'command_string' for not WAIT mode to             */
+/*           deal with the TIME OUT issue                                    */
+/* EM 10/10/2008                                                             */
+/* DEFECT:	1-42H6YZ                                                     */
+/* IMPACT:	While compling the file , below specified                    */
+/*          warnings were getting because of non-internationalised           */
+/*          code in main function.                                           */
+/*          "incompatible types - from 'UChar [201]' to 'const char *' "     */
+/* SOLUTION: Added tmstrcmp instead of strcmp and also added _TMC for "WAIT".*/
+/*                                                                           */
+/*					                                     */
+/* AUDIT TRAIL : 8.2                                                         */
+/* 1. Defect 1-573AW6                                                        */
+/*    LVH 05/13/2009                                                         */
+/*    Applied VMS changes to typcast some simple char and file datatypes     */
+/*    into the expected ICU variables eliminated compile errors on VMS       */
+/*                                                                           */
+/* AUDIT TRAIL: 8.2.0.1                                                      */
+/* Defect 1-71Z7E7                                         LVH   08/28/09    */
+/* 1. Ran re-key to synchronize internationalization messages                */
+/*                                                                           */
+/* AUDIT TRAIL: 8.2.0.2                                                      */
+/* 1. Defect 1-4TV8NQ                                      LVH   09/10/09    */
+/*    Changed strerror to use the new tmstrerror definition defined in       */
+/*    tmcilib.h.                                                             */
+/*    Also updated some strings to use TM_NLS_Get.                           */
+/*                                                                           */
+/* AUDIT TRAIL: 8.3                                                          */
+/* 1. TGKinderman 09/28/2009                                                 */
+/*    Establish procedures/functions in support of an AQ alternative         */
+/*    communication mechanism to that of DBMS_PIPE. Supports publishing and  */
+/*    consuming to single consumer queue(s) with a specific payload datatype */
+/*    of g_msg_fragments (message fragments).                                */
+/*                                                                           */
+/* AUDIT TRAIL: 8.3.1                                                        */
+/* 1. TGKinderman 07/29/2009                                                 */
+/*    Maximum wait time waiting for a message (on either the GURJOBS pipe or */
+/*    the GURJOBS_Q queue) is 345,600 seconds or 4 days (86,400 seconds per  */
+/*    day). If GURJOBS process sits idle for 4 days the process will then    */
+/*    stop. This modification reads IDLEWAIT time from gtvsdax and will only */
+/*    time out if it sits idle for that number of seconds. A value of        */
+/*    86,400,000 seconds (1000 days) is maximum.                             */
+/*                                                                           */
+/* AUDIT TRAIL: 8.5.2                                                        */
+/* 1. Defect 1-IHI0G5                                                        */
+/*    LVH 05/17/2012                                                         */
+/*    Deleted the statement UPPER casing the password [str2uc(csHold1);] so  */
+/*    that mixed case passwords could be processed by online jobs such as    */
+/*    GLRSLCT and GUAUIPW.                                                   */
+/*                                                                           */
+/* AUDIT TRAIL: 8.7.1.1                                                      */
+/* 1. Defect CR-000122138                                                    */
+/*    TGKinderman 11/18/2014                                                 */
+/*    Modify to edit HOST and WAIT commands to detect unauthorized and/or    */
+/*    unregistered commands from being executed at the host. These edits     */
+/*    can be bypassed by assigning special object GURJOBS_BYPASS_ADDL_CHECKS */
+/*    with any role (other than BAN_DEFAUL_NO_ACCESS) to user BANSECR        */
+/*                                                                           */
+/* AUDIT TRAIL: 8.7.3                                                       */
+/* 1. Defect 1-2D5A72                                                        */
+/*    TGKinderman 10/06/2014                                                */
+/*    a. Modify to recognize column gjbjobs_creds_in_file. A value of Y      */
+/*    indicates to process job obtaining credentials via the filesystem;     */
+/*    Otherwise credentials are obtained as positional arguments.            */
+/*    If obtaining credentials via the filesystem, 2 core modifications just */
+/*    prior to issuing the tmsystem(command_string) which launches the job   */
+/*    at the OS:                                                             */
+/*    1) replace the password on command line with stub value NOTVALIDPASSWD */
+/*    2) create necessary credential file(s) with permissions.               */
+/*    b. Modify parsing logic if what_direcory specifies an alternate HOME   */
+/*                                                                           */
+/* AUDIT TRAIL END                                                           */
+/*                                                                           */
+/*---------------------------------------------------------------------------*/
+#define MAXINPUT 200
+#define MAXCYCLE 50
+#include "guarpfe.h"
+#include "errno.h"
+EXEC SQL INCLUDE guaorac.c;
+/*---------------------------------------------------------------------------*/
+/*                      ORACLE BEGIN DECLARE SECTION                         */
+/*---------------------------------------------------------------------------*/
+EXEC SQL BEGIN DECLARE SECTION;
+static int   iPrintMsg=0;
+static int   iPrintUnAuthComMsg=0;
+static int   iAbortJob=0;
+static int   iTimedOut=0;
+static int   iQueTimedOut=0;
+static int   iSysCom=0;
+static int   iUnAuthCom=0;
+static int   iNextItem=0;
+static int   iGtvsdaxWaitSeconds=0;
+static int   iCredsInFileInd=0;
+static TMCHAR which_opsys[6]={0}/*TMCI18N CHANGED FROM ""*/;
+static TMCHAR mif_code[7]={0}/*TMCI18N CHANGED FROM ""*/;
+static TMCHAR csUserName[31]={0}/*TMCI18N CHANGED FROM ""*/;
+static TMCHAR csLowerUserName[31]={0}/*TMCI18N CHANGED FROM ""*/;
+static TMCHAR return_pipe[31]={0}/*TMCI18N CHANGED FROM ""*/;
+static TMCHAR command_string[201]={0}/*TMCI18N CHANGED FROM ""*/;
+static TMCHAR prs_command_string[201]={0}/*TMCI18N CHANGED FROM ""*/;
+static TMCHAR unAuthcommand_string[201]={0}/*TMCI18N CHANGED FROM ""*/;
+static TMCHAR what_directory[201]={0}/*TMCI18N CHANGED FROM ""*/;
+static TMCHAR work_whentrans[15]={0}/*TMCI18N CHANGED FROM ""*/;
+static TMCHAR work0_command[201]={0}/*TMCI18N CHANGED FROM ""*/;
+static TMCHAR work1_command[201]={0}/*TMCI18N CHANGED FROM ""*/;
+static TMCHAR work2_command[201]={0}/*TMCI18N CHANGED FROM ""*/;
+static TMCHAR work3_command[201]={0}/*TMCI18N CHANGED FROM ""*/;
+static TMCHAR work4_command[201]={0}/*TMCI18N CHANGED FROM ""*/;
+static TMCHAR work5_command[201]={0}/*TMCI18N CHANGED FROM ""*/;
+static TMCHAR work6_command[201]={0}/*TMCI18N CHANGED FROM ""*/;
+static TMCHAR work7_command[201]={0}/*TMCI18N CHANGED FROM ""*/;
+static TMCHAR work8_command[201]={0}/*TMCI18N CHANGED FROM ""*/;
+static TMCHAR work9_command[201]={0}/*TMCI18N CHANGED FROM ""*/;
+static TMCHAR work10_command[201]={0}/*TMCI18N CHANGED FROM ""*/;
+static TMCHAR work11_command[201]={0}/*TMCI18N CHANGED FROM ""*/;
+static TMCHAR work12_command[201]={0}/*TMCI18N CHANGED FROM ""*/;
+static TMCHAR work13_command[201]={0}/*TMCI18N CHANGED FROM ""*/;
+static TMCHAR work14_command[201]={0}/*TMCI18N CHANGED FROM ""*/;
+static TMCHAR work15_command[201]={0}/*TMCI18N CHANGED FROM ""*/;
+static TMCHAR work16_command[201]={0}/*TMCI18N CHANGED FROM ""*/;
+static TMCHAR work17_command[201]={0}/*TMCI18N CHANGED FROM ""*/;
+static TMCHAR temp_command[201]={0}/*TMCI18N CHANGED FROM ""*/;
+static TMCHAR command_type[201]={0}/*TMCI18N CHANGED FROM ""*/;
+static TMCHAR response[69]={0}/*TMCI18N CHANGED FROM ""*/;
+static TMCHAR err_msg1[201]={0}/*TMCI18N CHANGED FROM ""*/;
+static TMCHAR err_msg2[201]={0}/*TMCI18N CHANGED FROM ""*/;
+static TMCHAR err_msg3[201]={0}/*TMCI18N CHANGED FROM ""*/;
+static BANNUMSTR(return_stat)={0}/*TMCI18N CHANGED FROM ""*/;
+       short Ind_01;
+       short Ind_02;
+EXEC SQL END DECLARE SECTION;
+/*---------------------------------------------------------------------------*/
+/*                      ORACLE END DECLARE SECTION                           */
+/*---------------------------------------------------------------------------*/
+
+static TMCHAR caInputLine[MAXINPUT];
+static TMCHAR caWorkLine[MAXINPUT];
+static TMCHAR caNewHome[100]={0}/*TMCI18N CHANGED FROM ""*/;
+static TMCHAR caTestFile[100]={0}/*TMCI18N CHANGED FROM ""*/;
+static TMCHAR csCommand[31]={0}/*TMCI18N CHANGED FROM ""*/;
+static TMCHAR csHold1[255]={0}/*TMCI18N CHANGED FROM ""*/;
+static TMCHAR csHold2[255]={0}/*TMCI18N CHANGED FROM ""*/;
+static TMCHAR csJunk[31]={0}/*TMCI18N CHANGED FROM ""*/;
+static int iCnt;
+static int iCnt2;
+static int iCycle=0;
+static UFILE *fpPasswd;
+static UFILE *fpJobSub;
+/* defect  #14314
+static FILE *fpTempCom; */
+static TMCHAR * psHome;
+static TMCHAR * psUserName;
+static TMCHAR * psSave;
+static TMCHAR * psSave2;
+void get_GtvsdaxWaitSeconds();
+#if OPSYS==OS_UNIX
+  void lookupuser();
+  void do_unix_stuff();
+  /*TMCI18N CHANGED DECLARATION*/ /*static TMCHAR csPasswd[]=_TMC("/etc/passwd");*/
+static TMCHAR TMCHARRAY_GLOB_DCL(csPasswd,20,_TMC("/etc/passwd"));
+
+#ifndef OPSYS2
+  extern int errno;
+#endif
+#endif
+#if OPSYS==OS_VMS
+  void lookupuservms();
+  void do_vms_stuff();
+  char vms_cmd_str[255];
+  TMCHAR *cpHome;
+  /*TMCI18N CHANGED DECLARATION*/ /*TMCHAR *vms_source=_TMC("sysuaf.lis");*/
+  TMCHAR *TMCHARPTR_GLOB_DCL(vms_source,_TMC("sysuaf.lis"));
+
+  TMCHAR *gethdir(TMCHAR *src,TMCHAR *user);
+  char full_temp_com_name[255];
+  int created_com_file;
+#endif
+
+/*---------------------------------------------------------------------------*/
+/*                   Main program logic                                      */
+/*---------------------------------------------------------------------------*/
+
+int main(int argc,TMCHAR *argv[])
+{
+  int oraconn=0;
+  extern short sqltrace_flag;
+
+tmprintf(&tmBundle, _TMC("\n"));
+tmprintf(&tmBundle, TM_NLS_Get("0000","This program will service requests to run Banner batch programs."));
+tmprintf(&tmBundle, TM_NLS_Get("0001","\nIt reads the GURJOBS pipe, unpacks the message then executes it\n"));
+tmprintf(&tmBundle, TM_NLS_Get("0002","by issuing the system function. If you have implemented the Advanced\n"));
+tmprintf(&tmBundle, TM_NLS_Get("0003","Queuing alternative communication mechanism, instead of reading the\n"));
+tmprintf(&tmBundle, TM_NLS_Get("0004","GURJOBS pipe, this program dequeues from the GURJOBS_Q queue, defragments\n"));
+tmprintf(&tmBundle, TM_NLS_Get("0005","the payload message then executes it by issuing the system function.\n\n"));
+tmprintf(&tmBundle, TM_NLS_Get("0006","If gubiprf_security_enabled_ind = 'N', the userid used to run this\n"));
+tmprintf(&tmBundle, TM_NLS_Get("0007","program needs the CREATE SESSION privilege and SELECT privilege on\n"));
+tmprintf(&tmBundle, TM_NLS_Get("0008","general.gubinst.  Otherwise, they need to be set up like a standard\n"));
+tmprintf(&tmBundle, TM_NLS_Get("0009","Banner end user through the GSASECR form.\n\n"));
+
+  rptopen(user_pass,argc,argv);
+
+  login();
+  oraconn=1;
+
+  if ( sqltrace_flag )
+    EXEC SQL ALTER SESSION SET SQL_TRACE TRUE;
+
+
+#if OPSYS==OS_UNIX
+  tmstrcpy(which_opsys,_TMC("unix"));
+#elif OPSYS==OS_VMS
+  tmstrcpy(which_opsys,_TMC("vms"));
+#else
+  tmstrcpy(which_opsys,_TMC("other"));
+#endif
+
+/*---------------------------------------------------------------------------*/
+/*                          MAIN PROGRAM LOGIC                               */
+/*---------------------------------------------------------------------------*/
+
+   tmprintf(&tmBundle, TM_NLS_Get("0010","Waiting for work...\n"));
+
+exec sql whenever sqlerror goto sqlerr;
+
+  get_GtvsdaxWaitSeconds();
+
+get_more:
+
+  ++iCycle;
+  if (iCycle == MAXCYCLE )
+    {
+     iCycle=0;
+     tmprintf(&tmBundle, TM_NLS_Get("0011","Waiting for work...\n"));
+    }
+
+  response[0]='\0';
+  iSysCom=0;
+  iUnAuthCom=0;
+  what_directory[0]='\0';
+  work0_command[0]='\0';
+  work17_command[0]='\0';
+  command_type[0]='\0';
+  command_string[0]='\0';
+
+/*---------------------------------------------------------------------------*/
+/* Receive message processing.                                               */
+/* Check the command, if it's not HOST or EXIT something's wrong so get      */
+/* some info, change the command to EXIT then get out                        */
+/*---------------------------------------------------------------------------*/
+
+EXEC SQL EXECUTE
+ DECLARE
+/*   max_wait_receive, previously hard valued to 345600 seconds (4 days), is */
+/*   now obtained from gtvsdax row using function get_GtvsdaxWaitSeconds().  */
+/*   This is such that this number of seconds can be set larger (86400000    */
+/*   seconds/1000 days is maximum). This process is not needing to hard-stop */
+/*   after sitting idle for 4 days, if that is not desired.                  */
+   max_wait_receive      integer := :iGtvsdaxWaitSeconds;
+   seconds_per_day       integer := 86400;
+   temp_days             number(7,2) :=
+                         ROUND(max_wait_receive/seconds_per_day,2);
+   lv_len                integer;
+   x_msg                 g_msg_fragments;
+   x_command_string_raw  RAW(2000);
+   x_raw_in              RAW(2000);
+   x_string_out          VARCHAR2(300);
+   x_temp_what_directory VARCHAR2(300);
+
+   lv_inprimary          VARCHAR2(34);
+   lv_injob              VARCHAR2(30);
+   lv_inuserid           VARCHAR2(30);
+   lv_inpw               VARCHAR2(30);
+   x_temp                VARCHAR2(01);
+   CURSOR GJBJOBS_C (p_job_name VARCHAR2) IS
+     SELECT 'Y'
+       FROM GJBJOBS
+      WHERE GJBJOBS_NAME = UPPER(p_job_name);
+
+ BEGIN
+   IF (GB_ADVQ_UTIL.F_use_AQ_AND_NOT_PIPES('AQ4PIPES','GURJOBS') AND
+       GB_ADVQ_UTIL.F_use_AQ_AND_NOT_PIPES('AQ4PIPES','GURJOBS_RTN')) THEN
+     gb_advq_util.p_dequeue_msg_fragments('BANINST1.GURJOBS_Q',
+                                          max_wait_receive,
+                                          x_msg);
+     :return_pipe  := x_msg.mf_misc_01;
+     :command_type := sys.anydata.accessVARCHAR2(x_msg.mf_01);
+     IF :command_type <> 'EXIT' THEN
+       x_command_string_raw := sys.anydata.accessRAW(x_msg.mf_02);
+       x_raw_in := x_command_string_raw;
+       GSPCRPU.P_UNAPPLY(x_raw_in,x_string_out);
+       :command_string := x_string_out;
+     END IF;
+     IF :command_type <> 'EXIT' THEN
+       x_temp_what_directory :=
+                   NVL(sys.anydata.accessVARCHAR2(x_msg.mf_03),'XOXOXO');
+       IF x_temp_what_directory <> 'XOXOXO' THEN
+         :what_directory := x_temp_what_directory;
+       END IF;
+     END IF;
+     :mif_code := '::NA::';
+     lv_len := LENGTH(:command_type);
+     IF lv_len > 6 THEN
+       lv_len := lv_len - 6;
+       IF lv_len > 6 THEN
+         lv_len := 6;
+       END IF;
+     END IF;
+     IF SUBSTR(:command_type,1,6) = 'HOST::' THEN
+        :mif_code := SUBSTR(:command_type,7,lv_len);
+        :command_type := 'HOST';
+     END IF;
+     IF SUBSTR(:command_type,1,6) = 'WAIT::' THEN
+        :mif_code := SUBSTR(:command_type,7,lv_len);
+        :command_type := 'WAIT';
+     END IF;
+     IF :command_type = 'HOST' THEN
+        :iSysCom := 1;
+     ELSIF :command_type = 'WAIT' THEN
+        :iSysCom := 1;
+     ELSIF :command_type = 'EXIT' THEN
+        :response := G$_NLS.Get('1001', 'SQL', 'Exit command received - gurjobs terminating.');
+        :err_msg1 := G$_NLS.Get('1002', 'SQL', 'Exit command received - gurjobs terminating.');
+     ELSIF :command_type = 'TEST_HOME' THEN
+        NULL;
+     ELSE
+        :iAbortJob := 1;
+        :err_msg1 := G$_NLS.Get('1003', 'SQL', 'gurjobs aborted. Illegal command received. Command=%01%', :command_type);
+     END IF;
+   ELSE
+     :return_stat := GOKDBMS.PIPE_RECEIVE_MESSAGE('GURJOBS',max_wait_receive);
+     IF :return_stat = 0 THEN
+        GOKDBMS.PIPE_UNPACK_MESSAGE(:command_type);
+        GOKDBMS.PIPE_UNPACK_MESSAGE(:command_string);
+        GOKDBMS.PIPE_UNPACK_MESSAGE(:return_pipe);
+        :iNextItem := GOKDBMS.PIPE_NEXT_ITEM_TYPE;
+        IF :iNextItem <> 0 THEN
+           GOKDBMS.PIPE_UNPACK_MESSAGE(:what_directory);
+        END IF;
+        -- Check to see if campus code was passed, for a max length of 6
+        :mif_code := '::NA::';
+        lv_len := LENGTH(:command_type);
+        IF lv_len > 6 THEN
+          lv_len := lv_len - 6;
+          IF lv_len > 6 THEN
+            lv_len := 6;
+          END IF;
+        END IF;
+        IF SUBSTR(:command_type,1,6) = 'HOST::' THEN
+           :mif_code := SUBSTR(:command_type,7,lv_len);
+           :command_type := 'HOST';
+        END IF;
+        IF SUBSTR(:command_type,1,6) = 'WAIT::' THEN
+           :mif_code := SUBSTR(:command_type,7,lv_len);
+           :command_type := 'WAIT';
+        END IF;
+        IF :command_type = 'HOST' THEN
+           :iSysCom := 1;
+        ELSIF :command_type = 'WAIT' THEN
+           :iSysCom := 1;
+        ELSIF :command_type = 'EXIT' THEN
+           :response := G$_NLS.Get('1001', 'SQL', 'Exit command received - gurjobs terminating.');
+           :err_msg1 := G$_NLS.Get('1002', 'SQL', 'Exit command received - gurjobs terminating.');
+        ELSIF :command_type = 'TEST_HOME' THEN
+           NULL;
+        ELSE
+           :iAbortJob := 1;
+           :err_msg1 := G$_NLS.Get('1003', 'SQL', 'gurjobs aborted. Illegal command received. Command=%01%', :command_type);
+        END IF;
+     ELSIF :return_stat = 1 THEN
+        :iTimedOut := 1;
+        :command_type := 'EXIT';
+        :err_msg1 := G$_NLS.Get('1004', 'SQL', 'Time out after %01% seconds (%02% days) of inactivity',TO_CHAR(max_wait_receive),TO_CHAR(temp_days));
+     ELSE
+        :iAbortJob := 1;
+        :err_msg1 := G$_NLS.Get('1005', 'SQL', '*ERROR* receive_message got a bad status= %01% gurjobs exiting',:return_stat);
+     END IF;
+   END IF;
+/*---------------------------------------------------------------------------*/
+/* START Additional Validation                                               */
+/* Validation of HOST and WAIT commands to make sure that only authorized    */
+/* and/or registered commands are detected.                                  */
+/*---------------------------------------------------------------------------*/
+   IF NOT (G$_CHK_AUTH.G$_CHECK_AUTHORIZATION_FNC('GURJOBS_BYPASS_ADDL_CHECKS',
+                                                  'BANSECR') = 'YES') THEN
+     IF :command_type = 'HOST' OR
+        :command_type = 'WAIT' THEN
+       :work_whentrans := TO_CHAR(SYSDATE,'YYYYMMDDHH24MISS');
+       :unAuthcommand_string := :command_string;
+       IF :which_opsys = 'unix' THEN
+         IF INSTR(:command_string,' ') > 35 THEN  -- if length of the command
+           :iUnAuthCom := 1;                      -- is too long then get out 
+           GOTO END_ADDL_VAL;     
+         END IF;
+         IF :command_type = 'HOST' THEN
+           lv_inprimary := substr(:command_string,1,
+                                 INSTR(:command_string,' ',1,1) - 1);
+           IF UPPER(lv_inprimary) <> 'GJAJOBS.SHL' THEN
+             :iUnAuthCom := 1;
+             GOTO END_ADDL_VAL;
+           END IF;
+           lv_inuserid := substr(:command_string,INSTR(:command_string,' ',1,3) + 1,
+                                           INSTR(:command_string,' ',1,4) - 
+                                          (INSTR(:command_string,' ',1,3) + 1));
+           lv_inpw := substr(:command_string,INSTR(:command_string,' ',1,4) + 1,
+                                         INSTR(:command_string,' ',1,5) - 
+                                        (INSTR(:command_string,' ',1,4) + 1));
+           lv_injob := substr(:command_string,INSTR(:command_string,' ',1,1) + 1,
+                                          INSTR(:command_string,' ',1,2) -
+                                         (INSTR(:command_string,' ',1,1) + 1));
+         END IF;
+--
+         IF :command_type = 'WAIT' THEN
+           IF INSTR(:command_string,'.shl ') = 0 THEN -- if a shl with atleast one
+             :iUnAuthCom := 1;                        -- parameter (that is what
+             GOTO END_ADDL_VAL;                       -- one space is) then get out
+           END IF;
+           lv_inprimary := substr(:command_string,1,
+                                         INSTR(:command_string,' ',1,1) - 1);
+           IF INSTR(lv_inprimary,'.shl') = 0 THEN       -- first portion must contain
+             :iUnAuthCom := 1;                        -- .shl or get out
+             GOTO END_ADDL_VAL;
+           END IF;
+           lv_inuserid := substr(:command_string,INSTR(:command_string,' ',1,1) + 1,
+                                           INSTR(:command_string,' ',1,2) - 
+                                          (INSTR(:command_string,' ',1,1) + 1));
+           lv_inpw := substr(:command_string,INSTR(:command_string,' ',1,2) + 1,
+                                         INSTR(:command_string,' ',1,3) - 
+                                        (INSTR(:command_string,' ',1,2) + 1));
+           lv_injob := substr(lv_inprimary,1,INSTR(lv_inprimary,'.') - 1 );
+      -- --     OPEN GJBJOBS_C(lv_injob);
+      -- --     FETCH GJBJOBS_C INTO x_temp;
+      -- --     IF GJBJOBS_C%NOTFOUND THEN
+      -- --       CLOSE GJBJOBS_C;
+      -- --       :iUnAuthCom := 1;                        
+      -- --       GOTO END_ADDL_VAL;
+      -- --     END IF;
+      -- --     CLOSE GJBJOBS_C;
+         END IF;
+         IF NOT GOKPVAL.F_VALID_JOBSUB_PARM('GJU',:command_string) THEN
+           :iUnAuthCom := 1;
+         END IF;
+       ELSE
+/*         w i n d o w s   l o g i c   g o e s   h e r e      */       
+         IF substr(:command_string,1,5) <> 'perl ' THEN
+           :iUnAuthCom := 1;
+           GOTO END_ADDL_VAL;
+         END IF;
+         IF :command_type = 'HOST' THEN
+           lv_inprimary := substr(:command_string,INSTR(:command_string,' ',1,1) + 1,
+                                            INSTR(:command_string,' ',1,2) -
+                                           (INSTR(:command_string,' ',1,1) + 1));
+           IF UPPER(lv_inprimary) <> 'GJAJOBS.PL' THEN
+             :iUnAuthCom := 1;
+             GOTO END_ADDL_VAL;
+           END IF;         
+           lv_inuserid := substr(:command_string,INSTR(:command_string,' ',1,4) + 1,
+                                           INSTR(:command_string,' ',1,5) - 
+                                          (INSTR(:command_string,' ',1,4) + 1));
+           lv_inpw := substr(:command_string,INSTR(:command_string,' ',1,5) + 1,
+                                         INSTR(:command_string,' ',1,6) - 
+                                        (INSTR(:command_string,' ',1,5) + 1));
+           lv_injob := substr(:command_string,INSTR(:command_string,' ',1,2) + 1,
+                                          INSTR(:command_string,' ',1,3) -
+                                         (INSTR(:command_string,' ',1,2) + 1));
+
+         END IF;
+         IF :command_type = 'WAIT' THEN
+           lv_inprimary := substr(:command_string,INSTR(:command_string,' ',1,1) + 1,
+                                           INSTR(:command_string,' ',1,2) - 
+                                          (INSTR(:command_string,' ',1,1) + 1));
+           lv_inuserid := substr(:command_string,INSTR(:command_string,' ',1,2) + 1,
+                                           INSTR(:command_string,' ',1,3) - 
+                                          (INSTR(:command_string,' ',1,2) + 1));
+           lv_inpw := substr(:command_string,INSTR(:command_string,' ',1,3) + 1,
+                                         INSTR(:command_string,' ',1,4) - 
+                                        (INSTR(:command_string,' ',1,3) + 1));
+
+           lv_injob := substr(:command_string,(INSTR(:command_string,' ',1,5) + 1));
+      -- --     OPEN GJBJOBS_C(lv_inprimary);
+      -- --     FETCH GJBJOBS_C INTO x_temp;
+      -- --     IF GJBJOBS_C%NOTFOUND THEN
+      -- --       CLOSE GJBJOBS_C;
+      -- --       :iUnAuthCom := 1;                        
+      -- --       GOTO END_ADDL_VAL;
+      -- --     END IF;
+      -- --     CLOSE GJBJOBS_C;
+         END IF;
+         IF NOT GOKPVAL.F_VALID_JOBSUB_PARM('GJW',:command_string) THEN
+           :iUnAuthCom := 1;
+         END IF;     
+       END IF;
+
+<<END_ADDL_VAL>>
+       IF :iUnAuthCom = 1 THEN
+         :unAuthcommand_string := REPLACE(:unAuthcommand_string,
+                                          lv_inpw,
+                                          '<PASSWD>');
+         g$_security.g$_create_log_record(user,
+                                          'GURJOBS UNAUTHORIZED COMMAND',
+                                          :unAuthcommand_string);
+         :iSysCom := 0;
+       END IF;
+     END IF;  -- end if command_type is HOST or WAIT
+   END IF;  -- end if gurjobs_bypass_addl_checks 
+/*---------------------------------------------------------------------------*/
+/* END Additional Validation                                                 */
+/*---------------------------------------------------------------------------*/
+   :prs_command_string := :command_string;
+   
+ EXCEPTION
+   WHEN OTHERS THEN
+     IF SQLCODE = -25228 THEN
+       :iQueTimedOut := 1;
+       :command_type := 'EXIT';
+       :err_msg1 := G$_NLS.Get('1006', 'SQL', 'Time out after %01% seconds (%02% days) of inactivity',TO_CHAR(max_wait_receive),TO_CHAR(temp_days));
+     ELSIF SQLCODE = -25226 THEN
+       :command_type := 'EXIT';
+       :err_msg1 := G$_NLS.Get('1007', 'SQL', 'GURJOBS_Q queue has not been enabled. Use START_QUEUE to enable queue.');
+     ELSE
+       :iAbortJob := 1;
+       :err_msg1 := G$_NLS.Get('1008', 'SQL', 'The exception handler encountered an unexpected error');
+     END IF;
+ END;
+END-EXEC;
+
+/*---------------------------------------------------------------------------*/
+/* See what we got.                                                          */
+/*---------------------------------------------------------------------------*/
+
+  if (iAbortJob)
+    {
+     tmprintf(&tmBundle, TM_NLS_Get("0012","\n\nFATAL ERROR: {0}\n\n"),err_msg1);
+     tmprintf(&tmBundle, TM_NLS_Get("0013","SQL error info= {0}\n"),sqlca.sqlerrm.sqlerrmc);
+     exit2os(EXIT_FAILURE);
+     /* Defect #14314   */
+     return EXIT_FAILURE;
+    }
+
+  if (iTimedOut)
+    {
+     tmprintf(&tmBundle, TM_NLS_Get("0014","\nInformational message: {0}\n"),err_msg1);
+     exit2os(EXIT_FAILURE);
+     /* defect  #14314   */
+     return EXIT_FAILURE;
+    }
+
+/*---------------------------------------------------------------------------*/
+/* If iSysCom then we've received a request to run a system(command).        */
+/* First we need to extract the username. Then, if running in a unix         */
+/* environment, see if it's and ops$ account. If it is we need to escape     */
+/* the dollar sign or the shell will try to evaluate it as an env variable.  */
+/* If we got a directory name then use it, otherwise try to find one.        */
+/*---------------------------------------------------------------------------*/
+  if (iSysCom)
+    {
+
+     csUserName[0]='\0';
+     csLowerUserName[0]='\0';
+     tmstrcpy(csHold1,command_string);
+     tmstrncpy(csCommand,command_string,7);
+     str2uc(csCommand);
+
+/*---------------------------------------------------------------------------*/
+/* Find the username in the command string.                                  */
+/* For gjajobs, it's between the third and fourth space.                     */
+/* For rpovldt, it's between the first space and the first = sign.           */
+/* For any others it's between the first and second space.                   */
+/*---------------------------------------------------------------------------*/
+
+     if (!tmstrcmp(csCommand,_TMC("GJAJOBS")))
+       {
+        for (iCnt=0; iCnt < 4;)
+         {
+          psSave = tmstrchr(csHold1,' ');
+          psSave++;
+          tmstrcpy(csHold2,psSave);
+          tmstrcpy(csHold1,csHold2);
+          iCnt++;
+          if ( iCnt == 3 )
+            {
+/* -------------------------------------------------------------- */
+/* When you here you're at the beginning of the username.         */
+/* Find the next delimeter (the end of the username) and set it   */
+/* to null (to terminate the string).                             */
+/* -------------------------------------------------------------- */
+             psSave = tmstrchr(csHold1,' ');
+             *psSave = '\0';
+             iCnt++;
+             tmstrcpy(csUserName,csHold1);
+            }
+         }
+       }
+     else if (!tmstrcmp(csCommand,_TMC("RPOVLDT")))
+       {
+        psSave = tmstrchr(csHold1,' ');
+        psSave++;
+        tmstrcpy(csHold2,psSave);
+        tmstrcpy(csHold1,csHold2);
+        psSave = tmstrchr(csHold1,'=');
+        *psSave = '\0';
+        tmstrcpy(csUserName,csHold1);
+       }
+     else
+       {
+        psSave = tmstrchr(csHold1,' ');
+        psSave++;
+        tmstrcpy(csHold2,psSave);
+        tmstrcpy(csHold1,csHold2);
+        psSave = tmstrchr(csHold1,' ');
+        *psSave = '\0';
+        tmstrcpy(csUserName,csHold1);
+       }
+
+/* -------------------------------------------------------------- */
+/* Now we have the username. Convert it to lower case.            */
+/* If it's an ops$, get rid of the ops$                           */
+/* -------------------------------------------------------------- */
+     tmstrcpy(csLowerUserName,csUserName);
+     str2lc(csLowerUserName);
+
+     if (tmstrstr(csLowerUserName,_TMC("ops$")))
+       {
+         for (iCnt=4, iCnt2=0; iCnt < tmstrlen(csLowerUserName) + 1;
+                                iCnt++, iCnt2++)
+              csJunk[iCnt2] = csLowerUserName[iCnt];
+         tmstrcpy(csLowerUserName,csJunk);
+       }
+
+#if OPSYS==OS_UNIX
+     do_unix_stuff();
+#endif
+
+#if OPSYS==OS_VMS
+     created_com_file=0;
+     do_vms_stuff();
+#endif
+#if OPSYS==OS_WINNT
+/* -------------------------------------------------------------- */
+/* Append a ".pl" to process name for Windows NT, if "perl" is    */
+/* first 4 characters of command_string and ".pl" is not there    */
+/* (immediately preceeding 2nd space in command_string)           */
+/* We will also append --mif=<campus> if a mif code was passed    */
+/* -------------------------------------------------------------- */
+     csHold1[0]='\0';
+     csHold2[0]='\0';
+     csJunk[0]='\0';
+    /* Code fix added for TIMED OUT issue  1-3IJTLJ  */
+     if (tmstrcmp(command_type,_TMC("WAIT")))
+     {
+       tmstrcpy(csHold1,command_string);
+       tmstrcpy(command_string,_TMC("start /min "));
+       tmstrcat(command_string,csHold1);
+     }
+		/* End code fix for TIMED OUT issue  1-3IJTLJ   */
+     tmstrcpy(csHold1,command_string);
+     tmstrncpy(csJunk,command_string,4);
+     str2uc(csJunk);
+  /*     str2uc(csHold1); */ /* This may not be uppercased when using mixed case passwords in 11g */
+     if (!tmstrcmp(csJunk,_TMC("PERL")))
+       {
+         psSave = tmstrchr(csHold1,' ');
+         psSave++;
+         tmstrcpy(csHold2,psSave);
+         tmstrcpy(csHold1,csHold2);
+         psSave = tmstrchr(csHold1,' ');
+         tmstrcpy(csHold2,psSave);
+         *psSave = '\0';
+         psSave-=3;
+         tmstrcpy(csJunk,psSave);
+         if (tmstrcmp(csJunk,_TMC(".PL")))
+           {
+             tmstrcpy(command_string,_TMC("perl "));
+             tmstrcat(command_string,csHold1);
+             tmstrcat(command_string,_TMC(".pl"));
+             if (tmstrcmp(mif_code,_TMC("::NA::")) != 0)
+               {
+                 tmstrcat(command_string,_TMC(" --mif "));
+                 tmstrcat(command_string,mif_code);
+                 tmstrcat(command_string,_TMC(" "));
+               }
+             tmstrcat(command_string,csHold2);
+           }
+         else
+           {
+             if (tmstrcmp(mif_code,_TMC("::NA::")) != 0)
+               {
+                 tmstrcpy(command_string,_TMC("perl "));
+                 tmstrcat(command_string,csHold1);
+                 tmstrcat(command_string,_TMC(" --mif "));
+                 tmstrcat(command_string,mif_code);
+                 tmstrcat(command_string,_TMC(" "));
+                 tmstrcat(command_string,csHold2);
+               }
+           }
+       }
+#endif
+#ifdef SCT_DEBUG
+     tmprintf(&tmBundle, TM_NLS_Get("0015","\nCommand type: {0} "),command_type);
+     tmprintf(&tmBundle, TM_NLS_Get("0016","\nusing MIF code {0}\n"),mif_code);
+     tmprintf(&tmBundle, TM_NLS_Get("0017","\n     Command: {0} "),command_string);
+     tmprintf(&tmBundle, TM_NLS_Get("0018","\n Return pipe: {0} "),return_pipe);
+
+     prtstr(TM_NLS_Get("0019","The pipe command is: "));
+     prtstr(command_string);
+     newcol();
+     printf("%s\n",command_string);
+#endif
+
+#if OPSYS==OS_UNIX
+EXEC SQL EXECUTE
+ DECLARE
+   lv_userid             VARCHAR2(30);
+   lv_pw                 VARCHAR2(30);
+   lv_oneup              VARCHAR2(30);
+   lv_job                VARCHAR2(30);
+   lv_prntr              VARCHAR2(30);
+   lv_cred_portion       VARCHAR2(200);
+   lv_creds_in_file      VARCHAR2(1);
+   CURSOR gjbjobs_c (p_job_name VARCHAR2) IS
+     SELECT GJBJOBS_CREDS_IN_FILE
+       FROM GJBJOBS
+      WHERE GJBJOBS_NAME = UPPER(p_job_name);
+ BEGIN      
+   IF :command_type = 'HOST' THEN
+     lv_userid := substr(:prs_command_string,INSTR(:prs_command_string,' ',1,3) + 1,
+                                         INSTR(:prs_command_string,' ',1,4) - 
+                                        (INSTR(:prs_command_string,' ',1,3) + 1));
+     lv_pw := substr(:prs_command_string,INSTR(:prs_command_string,' ',1,4) + 1,
+                                     INSTR(:prs_command_string,' ',1,5) - 
+                                    (INSTR(:prs_command_string,' ',1,4) + 1));
+     lv_oneup := substr(:prs_command_string,INSTR(:prs_command_string,' ',1,5) + 1,
+                                        INSTR(:prs_command_string,' ',1,6) - 
+                                       (INSTR(:prs_command_string,' ',1,5) + 1));
+     lv_job := substr(:prs_command_string,INSTR(:prs_command_string,' ',1,1) + 1,
+                                        INSTR(:prs_command_string,' ',1,2) -
+                                       (INSTR(:prs_command_string,' ',1,1) + 1));
+     IF INSTR(:prs_command_string,' ',1,7) > 0 THEN
+       lv_prntr := substr(:prs_command_string,INSTR(:prs_command_string,' ',1,6) + 1,
+                                        INSTR(:prs_command_string,' ',1,7) -
+                                       (INSTR(:prs_command_string,' ',1,6) + 1));
+     ELSE
+       lv_prntr := substr(:prs_command_string,INSTR(:prs_command_string,' ',1,6) + 1);
+     END IF;
+     lv_cred_portion := lv_userid||' '||lv_pw||' '||lv_oneup||' '||UPPER(lv_job)||
+                                   ' '||lv_prntr;
+   END IF;
+--
+   IF :command_type = 'WAIT' THEN
+     lv_userid := substr(:prs_command_string,INSTR(:prs_command_string,' ',1,1) + 1,
+                                         INSTR(:prs_command_string,' ',1,2) - 
+                                        (INSTR(:prs_command_string,' ',1,1) + 1));
+     lv_pw := substr(:prs_command_string,INSTR(:prs_command_string,' ',1,2) + 1,
+                                     INSTR(:prs_command_string,' ',1,3) - 
+                                    (INSTR(:prs_command_string,' ',1,2) + 1));
+     lv_oneup := substr(:prs_command_string,INSTR(:prs_command_string,' ',1,3) + 1,
+                                        INSTR(:prs_command_string,' ',1,4) - 
+                                       (INSTR(:prs_command_string,' ',1,3) + 1));
+     IF INSTR(:prs_command_string,' ',1,5) > 0 THEN                                 
+        lv_job := substr(:prs_command_string,(INSTR(:prs_command_string,' ',1,4) + 1),
+	                                       INSTR(:prs_command_string,' ',1,5) - 
+                                         (INSTR(:prs_command_string,' ',1,4) + 1));
+     ELSE
+        lv_job := substr(:prs_command_string,(INSTR(:prs_command_string,' ',1,4) + 1));
+     END IF;
+     
+     lv_prntr := '';
+     lv_cred_portion := lv_userid||' '||lv_pw||' '||lv_oneup||' '||UPPER(lv_job);
+     IF substr(:command_string,1,5) = 'HOME=' THEN
+       :work17_command := substr(:command_string,6,
+                                 INSTR(:command_string,' ',1,1) - 6);
+       lv_cred_portion := lv_cred_portion||' '||:work17_command;
+     END IF;
+   END IF;           
+
+   OPEN gjbjobs_c(lv_job);
+   FETCH gjbjobs_c INTO lv_creds_in_file;
+   CLOSE gjbjobs_c;
+   IF lv_creds_in_file = 'Y' THEN
+     :iCredsInFileInd := 1;
+   ELSE
+     :iCredsInFileInd := 0;
+   END IF; 
+
+   IF lv_creds_in_file = 'Y' THEN           
+     IF substr(:command_string,1,5) = 'HOME=' THEN
+       :work0_command := substr(:command_string,6,
+                                 INSTR(:command_string,' ',1,1) - 6);
+       :work1_command := 'cat /dev/null > '||:work0_command||'/'||lv_oneup||'.creds';
+       :work2_command := 'chmod 600 '||:work0_command||'/'||lv_oneup||'.creds';
+       :work3_command := 'echo '||lv_cred_portion||' >> '||:work0_command||'/'||lv_oneup||'.creds';
+
+       :work4_command := 'cat /dev/null > '||:work0_command||'/'||LOWER(lv_job)||'_'||lv_oneup||'.in';
+       :work5_command := 'chmod 600 '||:work0_command||'/'||LOWER(lv_job)||'_'||lv_oneup||'.in';
+       :work6_command := 'echo '||lv_userid||'/'||lv_pw||' >> '||:work0_command||'/'||LOWER(lv_job)||'_'||lv_oneup||'.in';
+       :work7_command := 'echo '||lv_oneup||' >> '||:work0_command||'/'||LOWER(lv_job)||'_'||lv_oneup||'.in';
+
+       :work10_command := 'cat /dev/null > '||:work0_command||'/'||'gurinso'||'_'||lv_oneup||'.in';
+       :work11_command := 'chmod 600 '||:work0_command||'/'||'gurinso'||'_'||lv_oneup||'.in';
+       :work12_command := 'echo '||lv_userid||'/'||lv_pw||' >> '||:work0_command||'/'||'gurinso'||'_'||lv_oneup||'.in';
+       :work13_command := 'echo '||lv_userid||' >> '||:work0_command||'/'||'gurinso'||'_'||lv_oneup||'.in';
+       :work14_command := 'cat /dev/null > '||:work0_command||'/'||lv_oneup||'.jcred';
+       :work15_command := 'chmod 600 '||:work0_command||'/'||lv_oneup||'.jcred';
+       :work16_command := 'echo '||lv_userid||'/'||lv_pw||' >> '||:work0_command||'/'||lv_oneup||'.jcred';
+     ELSE
+       :work1_command := 'cat /dev/null > $HOME/'||lv_oneup||'.creds';
+       :work2_command := 'chmod 600 $HOME/'||lv_oneup||'.creds';
+       :work3_command := 'echo '||lv_cred_portion||' >> $HOME/'||lv_oneup||'.creds';
+       :work4_command := 'cat /dev/null > $HOME/'||LOWER(lv_job)||'_'||lv_oneup||'.in';
+       :work5_command := 'chmod 600 $HOME/'||LOWER(lv_job)||'_'||lv_oneup||'.in';
+       :work6_command := 'echo '||lv_userid||'/'||lv_pw||' >> $HOME/'||LOWER(lv_job)||'_'||lv_oneup||'.in';
+       :work7_command := 'echo '||lv_oneup||' >> $HOME/'||LOWER(lv_job)||'_'||lv_oneup||'.in';
+       :work10_command := 'cat /dev/null > $HOME/'||'gurinso'||'_'||lv_oneup||'.in';
+       :work11_command := 'chmod 600 $HOME/'||'gurinso'||'_'||lv_oneup||'.in';
+       :work12_command := 'echo '||lv_userid||'/'||lv_pw||' >> $HOME/'||'gurinso'||'_'||lv_oneup||'.in';
+       :work13_command := 'echo '||lv_userid||' >> $HOME/'||'gurinso'||'_'||lv_oneup||'.in';
+       :work14_command := 'cat /dev/null > $HOME/'||lv_oneup||'.jcred';
+       :work15_command := 'chmod 600 $HOME/'||lv_oneup||'.jcred';
+       :work16_command := 'echo '||lv_userid||'/'||lv_pw||' >> $HOME/'||lv_oneup||'.jcred';
+     END IF;
+     :work9_command := :command_string;
+     :work9_command := REPLACE(:work9_command,lv_pw,'NOTVALIDPASSWD');
+     :command_string := :work9_command;
+   END IF;
+ END;
+END-EXEC;
+ 
+  if (iCredsInFileInd == 1)
+    {
+     tmsystem(work1_command);
+     tmsystem(work2_command);
+     tmsystem(work3_command);
+     tmsystem(work4_command);
+     tmsystem(work5_command);
+     tmsystem(work6_command);
+     tmsystem(work7_command);
+     tmsystem(work10_command);
+     tmsystem(work11_command);
+     tmsystem(work12_command);
+     tmsystem(work13_command);
+     tmsystem(work14_command);
+     tmsystem(work15_command);
+     tmsystem(work16_command);
+    }
+#endif
+     tmsystem(command_string);
+   #if OPSYS==OS_VMS
+     if ( created_com_file )
+       {
+        strcpy(vms_cmd_str,"delete ");
+        strcat(vms_cmd_str,full_temp_com_name);
+        system(vms_cmd_str);
+       }
+   #endif
+    }
+
+  if (!tmstrcmp(command_type,_TMC("TEST_HOME")))
+     {
+      tmstrcpy(csLowerUserName,command_string);
+      str2lc(csLowerUserName);
+
+      if (tmstrstr(csLowerUserName,_TMC("ops$")))
+        {
+         for (iCnt=4, iCnt2=0; iCnt < tmstrlen(csLowerUserName) + 1;
+                                iCnt++, iCnt2++)
+              csJunk[iCnt2] = csLowerUserName[iCnt];
+         tmstrcpy(csLowerUserName,csJunk);
+        }
+
+      caNewHome[0]='\0';
+
+#if OPSYS==OS_UNIX
+      lookupuser();
+#endif
+
+#if OPSYS==OS_VMS
+      lookupuservms();
+#endif
+
+     }
+
+/*---------------------------------------------------------------------------*/
+/* Send reply back                                                           */
+/*---------------------------------------------------------------------------*/
+EXEC SQL EXECUTE
+ DECLARE
+   max_size         integer := 8192;
+   max_wait_send    integer := 10;
+   return_stat      integer;
+   x_msg            g_msg_fragments;
+ BEGIN
+   :iPrintMsg := 0;
+   :iPrintUnAuthComMsg := 0;
+   IF :iUnAuthCom = 1 THEN
+     :response := G$_NLS.Get('X', 'SQL','*ERROR* Request NOT processed. Unauthorized command detected.');
+     :err_msg3 := G$_NLS.Get('X', 'SQL', '*ERROR* Request NOT processed. Unauthorized command detected at %01%. Command:',:work_whentrans);
+     :iPrintUnAuthComMsg := 1;
+   ELSE
+     IF :command_type = 'EXIT' THEN
+       :response := G$_NLS.Get('1007', 'SQL', 'EXIT request is being processed.');
+     ELSIF :command_type = 'TEST_HOME' THEN
+       NULL;
+     ELSE
+       :response := G$_NLS.Get('1008', 'SQL', 'Your request is being processed.');
+     END IF;
+   END IF;
+   IF (GB_ADVQ_UTIL.F_USE_AQ_AND_NOT_PIPES('AQ4PIPES','GURJOBS') AND
+       GB_ADVQ_UTIL.F_USE_AQ_AND_NOT_PIPES('AQ4PIPES','GURJOBS_RTN')) THEN
+     IF :iQueTimedOut = 1 THEN
+       NULL;
+     ELSE
+       x_msg := g_msg_fragments(
+                      mf_misc_01 => :return_pipe,
+                      mf_01      => sys.anydata.ConvertVARCHAR2(:response),
+                      mf_02      => null,
+                      mf_03      => null,
+                      mf_04      => null,
+                      mf_05      => null,
+                      mf_06      => null,
+                      mf_07      => null,
+                      mf_08      => null,
+                      mf_09      => null,
+                      mf_10      => null);
+      GB_ADVQ_UTIL.P_ENQUEUE_MSG_FRAGMENTS('BANINST1.GURJOBS_RTN_Q',
+                                           x_msg);
+     END IF;
+   ELSE
+     GOKDBMS.PIPE_PACK_MESSAGE(:response);
+     :return_stat := GOKDBMS.PIPE_SEND_MESSAGE(:return_pipe,
+                                               max_wait_send,
+                                               max_size);
+     IF :return_stat <> 0 THEN
+       :err_msg1 := G$_NLS.Get('1008', 'SQL', '*Warning* problem sending reply to return_pipe, continuing');
+       :err_msg2 := G$_NLS.Get('1009', 'SQL', 'pipe name= %01% status= %02%', :return_pipe,:return_stat);
+       :iPrintMsg := 1;
+     END IF;
+   END IF;
+ EXCEPTION
+  WHEN OTHERS THEN
+    :err_msg1 := G$_NLS.Get('1008', 'SQL', '*Warning* problem sending reply to return_pipe, continuing');
+    :err_msg2 := G$_NLS.Get('1009', 'SQL', 'pipe name= %01% status= %02%', :return_pipe,:return_stat);
+    :iPrintMsg := 1;
+ END;
+END-EXEC;
+/*---------------------------------------------------------------------------*/
+  if (iPrintMsg)
+    {
+      prtstr(err_msg1);
+      prtstr(err_msg2);
+    }
+
+  if (iPrintUnAuthComMsg)
+    {
+     prtstr(err_msg3);
+     prtstr(unAuthcommand_string);
+     newcol();
+    }
+
+  if (!tmstrcmp(command_type,_TMC("EXIT")))
+    {
+      tmprintf(&tmBundle, TM_NLS_Get("0020","\nInformational message: {0}\n"),err_msg1);
+      exit2os(EXIT_SUCCESS);
+      /* defect #14314   */
+      return EXIT_SUCCESS;
+    }
+
+goto get_more;
+/*---------------------------------------------------------------------------*/
+sqlerr:
+ tmprintf(&tmBundle, TM_NLS_Get("0021","command type {0}\n"),command_type);
+ tmprintf(&tmBundle, TM_NLS_Get("0022","command string {0}\n"),command_string);
+ tmprintf(&tmBundle, TM_NLS_Get("0023","return pipe {0}\n"),return_pipe);
+ tmprintf(&tmBundle, TM_NLS_Get("0024","what directory {0}\n"),what_directory);
+ if (tmstrcmp(mif_code,_TMC("::NA::")) != 0)
+    {
+      tmprintf(&tmBundle, TM_NLS_Get("0025","using MIF code {0}\n"),mif_code);
+    }
+ tmprintf(&tmBundle, TM_NLS_Get("0026","errmsg1= {0}\n"),err_msg1);
+ tmfprintf(&tmBundle, tmstderr,_TMC("{0,% .70s}\n"),_TMV(sqlca.sqlerrm.sqlerrmc));
+ prtstr(TM_NLS_Get("0027","ERROR"));
+ prtstr(_TMV(sqlca.sqlerrm.sqlerrmc));
+
+  exec sql whenever sqlerror continue;
+ if ( oraconn == 1 )
+  {
+   exec sql rollback work release;
+  }
+    exit2os(EXIT_FAILURE);
+    /* defect #14314 */
+    return EXIT_FAILURE;
+}
+
+/*--------------------------------------------------------------------------*/
+/* get_GtvsdaxWaitSeconds                                                   */
+/*                                                                          */
+/* Prior to release 8.3.1 of this gurjobs program, the Maximum wait time    */
+/* waiting for a message (on either the GURJOBS pipe or the GURJOBS_Q       */
+/* queue) is 345,600 seconds or 4 days (86,400 seconds per day). If GURJOBS */
+/* process sits idle for 4 days the process will then stop.                 */
+/*                                                                          */
+/* This function, introduced in 8.3.1, reads IDLEWAIT time from gtvsdax and */
+/* will only time out if it sits idle for that number of seconds. A value   */
+/* of 86,400,000 seconds (1000 days) is maximum.                            */
+/* A value of 346,600 seconds (4 days), the default and also the delivered  */
+/* 8.3.1 value for IDLEWAIT gtvsdax, is used if the IDLEWAIT on gtvsdax is; */
+/* not found, is less than or equal to zero or is not numeric. If a value   */
+/* of IDLEWAIT on gtvsdax is too large, it is set to the max of 86,400,000  */
+/*--------------------------------------------------------------------------*/
+void get_GtvsdaxWaitSeconds()
+{
+
+EXEC SQL EXECUTE
+ DECLARE
+   lv_wait_seconds     NUMBER(15);
+   lv_wait_seconds_var VARCHAR2(15) := '';
+   CURSOR gtvsdax_c IS
+     SELECT GTVSDAX_EXTERNAL_CODE
+       FROM GTVSDAX
+      WHERE GTVSDAX_INTERNAL_CODE_GROUP = 'GURJOBS'
+        AND GTVSDAX_INTERNAL_CODE       = 'IDLEWAIT'
+        AND GTVSDAX_INTERNAL_CODE_SEQNO = 1;
+ BEGIN
+   OPEN gtvsdax_c;
+   FETCH gtvsdax_c INTO lv_wait_seconds_var;
+   IF gtvsdax_c%NOTFOUND THEN
+     lv_wait_seconds_var := '345600';
+   END IF;
+   CLOSE gtvsdax_c;
+
+   IF LENGTH(lv_wait_seconds_var) > 9 OR
+      lv_wait_seconds_var is NULL THEN
+     lv_wait_seconds := 86400000;
+   ELSE
+     lv_wait_seconds := TO_NUMBER(lv_wait_seconds_var);
+   END IF;
+   IF lv_wait_seconds > 86400000 THEN
+     lv_wait_seconds := 86400000;
+   END IF;
+   IF lv_wait_seconds < 0 OR
+      lv_wait_seconds = 0 THEN
+     lv_wait_seconds := 345600;
+   END IF;
+   :iGtvsdaxWaitSeconds := lv_wait_seconds;
+ EXCEPTION
+   WHEN OTHERS THEN
+-- -- This exception primarily to handle the failure of TO_NUMBER builtin
+-- -- being attempted on a non-numeric value for GTVSDAX_EXTERNAL_CODE. This
+-- -- will default a non-numeric value to 345,600 (4 days)
+     :iGtvsdaxWaitSeconds := 345600;
+ END;
+END-EXEC;
+
+}
+
+
+#if OPSYS==OS_UNIX
+void lookupuser()
+{
+
+/*---------------------------------------------------------------------------*/
+/* If what_directory != LOOKUP, we've received the name of a directory       */
+/* to test.                                                                  */
+/*---------------------------------------------------------------------------*/
+  if ( what_directory[0] != '\0' )
+     if ( tmstrcmp(what_directory,_TMC("DATABASE")) == 0 )
+          return;
+
+  if ( what_directory[0] !='\0' )
+    {
+     if (tmstrcmp(what_directory,_TMC("LOOKUP")) != 0 )
+       {
+        if (what_directory[tmstrlen(what_directory)-1] != '/')
+           tmstrcat(what_directory,_TMC("/test_file.lis"));
+        else
+           tmstrcat(what_directory,_TMC("test_file.lis"));
+
+        if  ((fpJobSub = tmfopen(&tmBundle, what_directory,_TMC("w"))) == NULL)
+          {
+           caNewHome[0] = '\0';
+           tmstrncpy(response,tmstrerror(errno),60);
+#ifdef SCT_DEBUG
+           printf("%d: %s\n",errno,strerror(errno));
+           tmprintf(&tmBundle, TM_NLS_Get("0028","Error-1 cannot open {0}\n"),what_directory);
+#endif
+           return;
+          }
+        else
+          {
+#ifdef SCT_DEBUG
+           tmprintf(&tmBundle, TM_NLS_Get("0029","You have access to {0}\n"),what_directory);
+#endif
+           tmfclose(fpJobSub);
+           remove((TMCHAR8*)what_directory);
+           tmstrcpy(response,_TMC("SUCCESS"));
+           return;
+          }
+       }
+    }
+
+/*---------------------------------------------------------------------------*/
+/* what_directory = LOOKUP so look in /etc/passwd for the user's entry, add  */
+/* the directory suffix, and try to create a file.                           */
+/*---------------------------------------------------------------------------*/
+  if  ((fpPasswd = tmfopen(&tmBundle, csPasswd,_TMC("r"))) == NULL)
+    {
+     tmprintf(&tmBundle, TM_NLS_Get("0030","Error-2 cannot open {0}\n"),csPasswd);
+     return;
+    }
+
+/*----------------------------------------------------------------------*/
+/* Use a while loop to find the entry for the user.                     */
+/* If there's no colon on the line skip it, otherwise, set a pointer    */
+/* to the first : and replace it with a NULL. If the resultant string   */
+/* is our username, keep going.                                         */
+/*----------------------------------------------------------------------*/
+  while (tmfgets(caInputLine,MAXINPUT,fpPasswd) != NULL &&
+           caInputLine[0] != '\n')
+    {
+    tmstrcpy(caWorkLine,caInputLine);
+    if (! tmstrstr(caWorkLine,_TMC(":")))
+       continue;
+    psUserName = tmstrchr(caWorkLine,':');
+    *psUserName = '\0';
+    if ( (caWorkLine != NULL) && (tmstrcmp(caWorkLine,csLowerUserName) == 0 ))
+     {
+/*----------------------------------------------------------------------*/
+/* Set a pointer to the location of the last semi-colon in the line     */
+/* from the passwd file and set the location it to null.                */
+/*----------------------------------------------------------------------*/
+     psHome = tmstrrchr(caInputLine,':');
+     *psHome = '\0';
+/*----------------------------------------------------------------------*/
+/* Set a pointer to the "new" last semi-colon, add one to it and copy   */
+/* the string to caNewHome. Then append /jobsub to it to contruct the   */
+/* directory name where batch output will go                            */
+/*----------------------------------------------------------------------*/
+     psHome = tmstrrchr(caInputLine,':');
+     psHome++;
+     tmstrcpy(caNewHome,psHome);
+     tmstrcat(caNewHome,_TMC("/jobsub"));
+
+/*----------------------------------------------------------------------*/
+/* Now try to open test_file.lis for writting. If you can do it then    */
+/* use the subdirectory name for jobsubmission. Otherwise, the output   */
+/* will go to the HOME directory of the submitter of gurjobs.           */
+/*----------------------------------------------------------------------*/
+     tmstrcpy(caTestFile,caNewHome);
+     tmstrcat(caTestFile,_TMC("/test_file.lis"));
+     if  ((fpJobSub = tmfopen(&tmBundle, caTestFile,_TMC("w"))) == NULL)
+       {
+         caNewHome[0] = '\0';
+         tmstrncpy(response,tmstrerror(errno),60);
+#ifdef SCT_DEBUG
+         printf("%d: %s\n",errno,strerror(errno));
+         tmprintf(&tmBundle, TM_NLS_Get("0031","Error-3 cannot open {0}\n"),caTestFile);
+#endif
+         break;
+       }
+     else
+       {
+#ifdef SCT_DEBUG
+         tmprintf(&tmBundle, TM_NLS_Get("0032","Access is okay for {0}\n"),caTestFile);
+#endif
+         tmfclose(fpJobSub);
+         remove((TMCHAR8*)caTestFile);
+         tmstrcpy(response,_TMC("SUCCESS "));
+         tmstrcat(response,caNewHome);
+         break;
+       }
+     }
+    }
+
+  tmfclose(fpPasswd);
+  return;
+}
+void do_unix_stuff()
+{
+
+/*----------------------------------------------------------------------*/
+/* If we're not running GUAVRFY and the command_type != WAIT, add an &  */
+/* so the job runs in background. GUAVRFY always waits.                 */
+/*----------------------------------------------------------------------*/
+
+   if ( tmstrcmp(csCommand,_TMC("GUAVRFY")) != 0 )
+     if ( tmstrcmp(command_type,_TMC("WAIT")) != 0 )
+          tmstrcat(command_string,_TMC(" &"));
+
+/*----------------------------------------------------------------------*/
+/* If it's an ops$ account, strip off the ops$ to get the username      */
+/*----------------------------------------------------------------------*/
+
+   if ( tmstrstr(csUserName,_TMC("ops$")))
+     {
+      tmstrcpy(csHold1, command_string);
+      psSave=tmstrstr(csHold1,_TMC("ops$"));
+      psSave2=psSave;
+      psSave2 += 4;
+      tmstrcpy(csHold2,psSave2);
+      *psSave='\0';
+      tmstrcat(csHold1,_TMC("ops\\$"));
+      tmstrcat(csHold1,csHold2);
+      tmstrcpy(command_string,csHold1);
+     }
+/* -------------------------------------------------------------- */
+/* Set the environment variable MIF_CODE to the current campus    */
+/* -------------------------------------------------------------- */
+     if (tmstrcmp(mif_code,_TMC("::NA::")) != 0)
+    {
+      tmstrcpy(temp_command,_TMC("MIF_CODE="));
+      tmstrcat(temp_command,mif_code);
+      tmstrcat(temp_command,_TMC(" "));
+      tmstrcat(temp_command,command_string);
+      tmstrcpy(command_string,temp_command);
+    }
+
+/* -------------------------------------------------------------- */
+/* If the directory has a trailing slash, get rid of it.          */
+/* -------------------------------------------------------------- */
+
+  if ( what_directory[0] != '\0' )
+     if ( tmstrcmp(what_directory,_TMC("DATABASE")) == 0 )
+          return;
+
+   if ( what_directory[0] !='\0' )
+     {
+      if (what_directory[tmstrlen(what_directory)-1] == '/')
+ /* Defect 1-M8RNX */
+        {
+          what_directory[tmstrlen(what_directory)-1] = '\0';
+        }
+         tmstrcpy(temp_command,_TMC("HOME="));
+         tmstrcat(temp_command,what_directory);
+         tmstrcat(temp_command,_TMC(" "));
+         tmstrcat(temp_command,command_string);
+         tmstrcpy(command_string,temp_command);
+     }
+   else
+     {
+      caNewHome[0]='\0';
+      lookupuser();
+      if (  caNewHome[0] != '\0'  )
+        {
+         tmstrcpy(temp_command,_TMC("HOME="));
+         tmstrcat(temp_command,caNewHome);
+         tmstrcat(temp_command,_TMC(" "));
+         tmstrcat(temp_command,command_string);
+         tmstrcpy(command_string,temp_command);
+        }
+     }
+
+   return;
+}
+#endif
+#if OPSYS==OS_VMS
+/* gethdir reads a VMS sysuaf.lis file and returns a pointer to a string
+   containing the home directory for a designated user.  It takes two
+   parameters:
+
+      src: the fully qualified name of the sysuaf.lis listing file
+      user: the userid to look up
+
+   A pointer to a local static char array containing the directory name
+   is returned if the lookup is successful, otherwise a NULL is returned.
+   Note that if the file cannot be opened for reading then failure is
+   silent and NULL is returned.
+*/
+
+TMCHAR *gethdir(TMCHAR *src,TMCHAR *user)
+{
+  UFILE *data;
+  static TMCHAR buf[257];
+  TMCHAR *p;
+  TMCHAR *user_userid,*user_uic,*user_dir;
+  TMCHAR lc_user[128];
+  TMCHAR *ret_value=NULL;
+
+  str2lc(tmstrcpy(lc_user,user));
+
+  if ( (data=tmfopen(&tmBundle, src,_TMC("r"))) == NULL )
+    return NULL;
+
+  while(tmfgets(buf,256,data))
+    {
+      /* get rid of extra blanks; simplifies remainder of code */
+      strzip(buf);
+
+      /* get directory; last field on line is either dirname or disuser */
+      if ( (p=tmstrrchr(buf,' ')) == NULL )
+        continue;
+      user_dir = p+1;
+      *p = '\0';
+      str2lc(user_dir);
+      if ( !tmstrcmp(user_dir,_TMC("disuser")) )
+        continue;
+
+      /* now get UIC */
+      if ( (p=tmstrrchr(buf,'[')) == NULL )
+        continue;
+      user_uic = p;
+      if ( p == buf )
+        continue;
+      *--p = '\0';
+      if ( (p=tmstrchr(user_uic,' ')) != NULL )
+        *p = '\0';
+
+      /* finally, get userid */
+      if ( (p=tmstrrchr(buf,' ')) == NULL )
+        user_userid = buf;
+      else
+        user_userid = p+1;
+
+      /* now see if we found it */
+      if ( !tmstrcmp(lc_user,str2lc(user_userid)) )
+        {
+          ret_value = user_dir;
+          break;
+        }
+    }
+
+  /* all returns exit here so that file is properly closed */
+  tmfclose(data);
+  return ret_value;
+}
+
+void lookupuservms()
+{
+
+/*---------------------------------------------------------------------------*/
+/* If what_directory != LOOKUP, we've received the name of a directory       */
+/* to test.                                                                  */
+/*---------------------------------------------------------------------------*/
+  if ( what_directory[0] != '\0' )
+     if ( tmstrcmp(what_directory,_TMC("DATABASE")) == 0 )
+          return;
+
+  if ( what_directory[0] !='\0' )
+    {
+     if (tmstrcmp(what_directory,_TMC("LOOKUP")) != 0 )
+       {
+           tmstrcat(what_directory,_TMC("test_file.lis"));
+
+        if  ((fpJobSub = tmfopen(&tmBundle, what_directory,_TMC("w"))) == NULL)
+          {
+           caNewHome[0] = '\0';
+           tmstrcpy(response,TM_NLS_Get("0033","Invalid Directory"));
+#ifdef SCT_DEBUG
+           strncpy(response,strerror(errno),60);
+           printf(TM_NLS_Get("0034","cant open {0}\n"),what_directory);
+           printf("%d: %s\n",errno,strerror(errno));
+#endif
+           return;
+          }
+        else
+          {
+#ifdef SCT_DEBUG
+           printf(TM_NLS_Get("0035","You can open directory {0}\n"),what_directory);
+#endif
+           tmfclose(fpJobSub);
+           remove((TMCHAR8*)what_directory);
+           tmstrcpy(response,_TMC("SUCCESS"));
+           return;
+          }
+       }
+    }
+
+/*---------------------------------------------------------------------------*/
+/* what_directory = LOOKUP so look in vms_source for the user's entry, add   */
+/* the directory suffix, and try to create a file.                           */
+/*---------------------------------------------------------------------------*/
+
+  str2uc(csLowerUserName);
+  cpHome=gethdir(vms_source,csLowerUserName);
+  if ( cpHome )
+    {
+     tmstrcpy(caNewHome,cpHome);
+
+/*----------------------------------------------------------------------*/
+/* Now try to open test_file.lis for writting. If you can do it then    */
+/* use the subdirectory name for jobsubmission. Otherwise, the output   */
+/* will go to the HOME directory of the submitter of gurjobs.           */
+/*----------------------------------------------------------------------*/
+     tmstrcpy(caTestFile,caNewHome);
+     tmstrcat(caTestFile,_TMC("test_file.lis"));
+     if  ((fpJobSub = tmfopen(&tmBundle, caTestFile,_TMC("w"))) == NULL)
+       {
+         caNewHome[0] = '\0';
+         tmstrcpy(response,TM_NLS_Get("0036","Invalid Directory"));
+#ifdef SCT_DEBUG
+         strncpy(response,strerror(errno),60);
+         printf(TM_NLS_Get("0037","cant open {0}\n"),caTestFile);
+         printf("%d: %s\n",errno,strerror(errno));
+#endif
+       }
+     else
+       {
+#ifdef SCT_DEBUG
+         printf(TM_NLS_Get("0038","okay {0}\n"),caTestFile);
+#endif
+         tmfclose(fpJobSub);
+         remove((TMCHAR8*)caTestFile);
+         tmstrcpy(response,_TMC("SUCCESS "));
+         tmstrcat(response,caNewHome);
+       }
+     }
+}
+
+void do_vms_stuff()
+{
+  /* defect  #14314 */
+  static UFILE *fpTempCom;
+  static FILE *fpTempComfget;
+ char mytempfilename[255];
+/* --------------------------------------------------------------------- */
+/* No need to create a temp com if reporting to the DATABASE and not MIF */
+/* --------------------------------------------------------------------- */
+
+  if ( what_directory[0] != '\0' )
+     if ( tmstrcmp(what_directory,_TMC("DATABASE")) == 0 )
+       if ( tmstrcmp(mif_code,_TMC("::NA::")) == 0 )
+          return;
+
+/* -------------------------------------------------------------- */
+/* If any commands need to be passed, they must be done in a      */
+/* temp com file. For MIF, the MIF_CODE symbol will be created    */
+/* and picked up by gjajobs.com for further processing.           */
+/* -------------------------------------------------------------- */
+
+  if ((fpTempCom = tmfopen(&tmBundle, _TMC("temp.com"),_TMC("w"))) == NULL)
+    {
+        tmprintf(&tmBundle, TM_NLS_Get("0039","Cannot create {0}\n"),_TMC("temp.com"));
+        return;
+    }
+/*
+  fgetname(fpTempCom, full_temp_com_name,1);
+*/
+  created_com_file=1;
+
+/* blank out temp_command before starting new run */
+tmstrcpy(temp_command,_TMC(""));
+
+/* -------------------------------------------------------------- */
+/* We need to SET DEFAULT to the directory passed or the users    */
+/* default directory. If the passed directory is DATABASE then    */
+/* we will set default to the users default directory.            */
+/* -------------------------------------------------------------- */
+
+   if ( ( what_directory[0] == '\0' ) ||
+        ( tmstrcmp(what_directory,_TMC("DATABASE")) == 0 ) )
+     {
+       cpHome=gethdir(vms_source,csLowerUserName);
+       if ( cpHome )
+         {
+           tmstrcpy(temp_command,_TMC("$ SET DEF "));
+           tmstrcat(temp_command,cpHome);
+           tmstrcat(temp_command,_TMC("\n"));
+         }
+     }
+   else
+     {
+                 /* defect 1-3AYTP1 */
+       tmstrcpy(temp_command,_TMC("$ SET DEF "));
+       tmstrcat(temp_command,what_directory);
+       tmstrcat(temp_command,_TMC("\n"));
+     }
+/* ------------------------------------------- */
+/* Add the proper SET DEF to the temp com file */
+/* ------------------------------------------- */
+   tmfputs(temp_command,fpTempCom);
+/* ------------------------------------------------------------------- */
+/* If the MIF_CODE has been defined, then create a symbol that can be  */
+/* extracted by gjajobs or used directly by other jobs.                */
+/* ------------------------------------------------------------------- */
+   if ( tmstrcmp(mif_code,_TMC("::NA::")) != 0 )
+     {
+        tmstrcpy(temp_command,_TMC("$ MIF_CODE :== "));
+        tmstrcat(temp_command,mif_code);
+        tmstrcat(temp_command,_TMC("\n"));
+        tmfputs(temp_command,fpTempCom);
+     }
+/* ------------------------------------------- */
+/* Write out the actual command to be executed */
+/* ------------------------------------------- */
+           /* defect 1-3AYTP1 */
+   tmstrcpy(temp_command,_TMC("$ "));
+   tmstrcat(temp_command,command_string);
+   tmstrcat(temp_command,_TMC("\n"));
+   tmfputs(temp_command,fpTempCom);
+   tmfclose(fpTempCom);
+        /* Defect 1-2WH6DK */
+/* Use fpTempComfget in order to use fgetname*/
+/* No tmfgetname in ustdio.h Then use _TMC() to force data back into command_string */
+   fpTempComfget = fopen("temp.com","r");
+   fgetname(fpTempComfget, full_temp_com_name,1);
+   fclose(fpTempComfget);
+   tmstrcpy(command_string,_TMC("@"));
+   tmstrcat(command_string,_TMC(full_temp_com_name));
+
+   return;
+}
+#endif
+
+/*TMCI18N BEGIN GLOBAL STRING INITIALIZATION*/
+#ifndef ORA_PROC
+void tmInitGlobS_gurjobs(void){
+
+#if OPSYS==OS_UNIX
+    TMCHARRAY_GLOB_INIT(csPasswd);
+#endif
+
+#if OPSYS==OS_VMS
+    TMCHARPTR_GLOB_INIT(vms_source);
+#endif
+
+#ifdef SCT_DEBUG
+    tmprintf(&tmBundle, TM_NLS_Get("0037","*** Initialization tmInitGlobS_gurjobs OK ***\n"));
+#endif
+
+}
+#endif /* not defined ORA_PROC*/
+/*TMCI18N END GLOBAL STRING INITIALIZATION*/
