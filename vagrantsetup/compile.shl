@@ -1,0 +1,5 @@
+#
+#cd $BANNER_LINKS            
+rm *.c && rm *.o
+
+make -f sctproc.mk $1 CHECKOPT="sqlcheck=full userid=baninst1/u_pick_it"
