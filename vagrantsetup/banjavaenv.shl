@@ -1,0 +1,66 @@
+#!/bin/sh
+#
+# *****************************************************************************
+# *                                                                          *
+# * Copyright 2010 - 2016 Ellucian Company L.P. and its affiliates.          *
+# *                                                                          *
+# ****************************************************************************
+#  banjavaenv.shl
+#
+#  This script sets environment variables for Java based C programs
+#  and will override variables set in banenv which is used by both
+#  Cobol and C based processes.
+#
+# --------------------------------------------------------------------------
+# | AUDIT TRAIL: 8.3.0.5
+# | RPE 1-BGKXTQ
+# | LVH 04/27/2010
+# | 1. Initial release enabling the override of environment variables
+# |    for batch java processes
+# | AUDIT TRAIL: 8.4.2
+# | Defect#: 1-ORY0W8 
+# | EM 05/02/2011
+# | 1. Added JAVA_HOME path to PATH environment varibale and 
+# |    export the PATH variable.
+# | AUDIT TRAIL: 8.6.2.1
+# | CR-000108187 - Java 5 desupport
+# |  EM  01/06/2014
+# |  1. Included new path to BAN_CLASSPATH_SUFFIX for ojdbc6.jar.
+# |  2. Changed the LD_LIBRARY_PATH path to lib instead of lib32.
+# | AUDIT TRAIL: 8.8.6 
+# | CR-000126113 - Java 5 desupport 
+# | DAG 04/11/2016 
+# |  8.6.2.1 was never delivered and now is being delivered in 
+# |  8.8.6.
+# | AUDIT TRAIL END
+# --------------------------------------------------------------------------
+#
+#  If there is a need to override the default JAVA_HOME, set that here
+#
+  JAVA_HOME="/bin/java"
+  export JAVA_HOME
+  
+  
+  PATH=$JAVA_HOME/bin:$PATH
+  export PATH
+
+#
+#  LD_LIBRARY_PATH is originally set in $BANNER_HOME/admin/banenv
+#  Override for 32bit or 64bit Java on Linux by prefixing with the
+#  proper directory.
+#
+  LD_LIBRARY_PATH=$ORACLE_HOME/lib:$LD_LIBRARY_PATH
+  export LD_LIBRARY_PATH
+#
+#  Define the location of the current java libraries
+#
+  BAN_CLASSPATH_SUFFIX="$BANNER_HOME/ojdbc6.jar"
+  export BAN_CLASSPATH_SUFFIX
+#
+#  Define the JDBC connection string here
+#
+  JDBC_CONNECTION=jdbc:oracle:thin:@localhost:1521/BAN83
+  export JDBC_CONNECTION
+#
+#  end banjavaenv.shl
+#
