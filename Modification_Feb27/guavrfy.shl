@@ -1,0 +1,148 @@
+#!/bin/sh
+#
+# guavrfy.shl - script to run the USER ID/PASSWORD validation program
+#
+# ****************************************************************************
+# *                                                                          *
+# * Copyright 1991-2017 Ellucian Company L.P. and its affiliates.            *
+# *                                                                          *
+# ****************************************************************************
+#
+# AUDIT TRAIL: 1.10                                      INIT    DATE
+# 1. Modified to run without rtsora.                      LF  09-15-91
+# 2. Modified to add rm statement.                        SQ  10-15-91
+#
+# AUDIT TRAIL: 1.9                                       INIT   DATE
+# 1. Modified to add audit trail.                         SQ  05-07-91
+# 2. Rename cobol program to uppercase.                   SQ  05-14-91
+# AUDIT TRAIL: 5.5
+# 1. GShalovka 25 Apr 2002
+#    Defect:  45363
+#    Problem: Log files overwritten because name is not unique.
+#    Solution:Add process number ( $3 ) to log file name.
+# 2. GShalovka 25 Apr 2002
+#    Defect:  37153
+#    Problem: Not all output files written to selected output.
+#    Solution:Add printer and database writes.
+# AUDIT TRAIL: 6.1.2.1
+# 1. G Shalovka 30 Jan 2004
+#    Defect:  92535.
+#    Problem: Parameter 'UID' is reserved word in LINUX.
+#    Solution:Change parameter 'UID' to 'BANUID'.
+# AUDIT TRAIL: 8.5.1
+# 1. Make parameter input file private                           JWM 02/23/2012
+#    Defect 1-108V2SS
+# AUDIT TRAIL: 8.7.3
+# 1. TGKinderman 09/22/2014
+#    Defect 1-2D5A72
+#    Modify to support column gjbjobs_creds_in_file. A value of Y indicates
+#    to process job obtaining credentials via the filesystem; Otherwise
+#    credentials are passed as positional arguments. This shl is modified to
+#    support running either way. A password value of NOTVALIDPASSWD indicates
+#    to this shl that credentials are obtained from the filesystem; otherwise
+#    credentials are passed as positional arguments.
+#
+# AUDIT TRAIL: 8.9.4
+# 1. CR-000150111 Jobsub SaaS                                   DJD 08/2017
+#    Modify to support running in a SaaS environment. Adds variables to
+#    to determine if and how output files should be stored in the database,
+#    and how they are printed.
+#
+# AUDIT TRAIL: 8.10.1
+# 1. CR-000153832                                              AVM 02/27/2018
+#    Removed the unwanted 'fi' which was giving runtime error when guavrfy shell was executed. 
+#    This jobsub was executing fine and creating a valid log file apart from the runtime error of:
+#          line 142 syntax error near unexpected token fi
+#    The modification fixed the runtime error keeping the actual output as it is.
+# 
+# AUDIT TRAIL END
+#
+##
+#
+if [ $# -gt 5 ]
+then
+  # running in WAIT mode
+  L_MIME="$6"
+  L_ONPREM_PRINT="$8"
+else
+  # running in HOST mode, from gjajobs.shl
+  L_MIME=$MIME
+  L_ONPREM_PRINT=$ONPREM_PRINT
+fi
+#
+# set the environment variables 
+#
+if [ "$2" != "NOTVALIDPASSWD" ]
+then
+  CMDFILE=$HOME/$$.prm;export CMDFILE;
+  cat /dev/null >$CMDFILE
+  chmod 600 $CMDFILE
+  #
+  ##
+  #
+  echo $1 $2 $3 $4 $5 >$CMDFILE
+  $COBPREF GUAVRFY$COBSUFX >$HOME/`basename $0 .shl`_$3.log
+  #
+  if [ "$PRNT" = "DATABASE" ]
+    then
+      gurinso -n $ONE_UP -l $HOME/$TEMP.log -j $PROC -w $BANUID $UIPW
+    else
+      # log file is always written to gjirevo if gjrjlis save print option is requested
+      if [ "$L_MIME" = "1" ] || [ "$L_MIME" = "2" ]
+      then
+        gurinso -n $ONE_UP -l $HOME/$TEMP.log -j $PROC -w $BANUID $UIPW
+      fi 
+  fi
+  #
+  if [ -n "$PRNT" ]
+    then
+    if [ "$PRNT" != "NOPRINT" -a "$PRNT" != "DATABASE" ]
+      then
+        # only print if printer is available to jobsub server, printers defined on gjalcpr are printed externally
+        if [ "$L_ONPREM_PRINT" = "" ] || [ "$L_ONPREM_PRINT" = "JOBSUB" ]
+        then
+          if [ -r $HOME/$TEMP.log ]
+            then
+              $PRNTOPT $HOME/$TEMP.log 1>>$LOG 2>&1
+          fi
+        fi
+    fi
+  fi
+  #
+  /bin/rm $CMDFILE
+else
+  CMDFILE=$HOME/$3.creds;export CMDFILE;
+  #
+  $COBPREF GUAVRFY$COBSUFX >$HOME/`basename $0 .shl`_$3.log
+  #
+  if [ "$PRNT" = "DATABASE" ]
+    then
+      gurinso -n $ONE_UP -l $HOME/$TEMP.log -y $HOME/gurinso_$3.in -j $PROC -w $BANUID $UIPW
+    else
+      # log file is always written to gjirevo if gjrjlis save print option is requested
+      if [ "$L_MIME" = "1" ] || [ "$L_MIME" = "2" ]
+      then
+        gurinso -n $ONE_UP -l $HOME/$TEMP.log -y $HOME/gurinso_$3.in -j $PROC -w $BANUID $UIPW
+      fi
+  fi
+  #
+  if [ -n "$PRNT" ]
+    then
+    if [ "$PRNT" != "NOPRINT" -a "$PRNT" != "DATABASE" ]
+      then
+        # only print if printer is available to jobsub server, printers defined on gjalcpr are printed externally
+        if [ "$L_ONPREM_PRINT" = "" ] || [ "$L_ONPREM_PRINT" = "JOBSUB" ]
+        then
+          if [ -r $HOME/$TEMP.log ]
+            then
+              $PRNTOPT $HOME/$TEMP.log 1>>$LOG 2>&1
+          fi
+        fi  
+    fi
+  fi
+  #
+  /bin/rm $CMDFILE
+  /bin/rm $HOME/gurinso_$3.in
+  /bin/rm $HOME/$3.jcred
+  /bin/rm $HOME/guavrfy_$3.in
+fi

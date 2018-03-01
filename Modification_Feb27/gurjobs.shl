@@ -1,0 +1,42 @@
+:
+#!/bin/sh
+#   gurjobs.shl
+#   Replace genlprd with a valid user id.
+# AUDIT TRAIL: 2.1.5
+# 1 New routine to start jobsubmission        TM 10/29/95
+# AUDIT TRAIL: 3.1
+# 1 Redeliver 2.1.5 version incase this shl   RH 02/05/97
+#   was overlayed with the COURTS version.
+# AUDIT TRAIL: 7.5
+# 1. Use redirection from a protected file   LVH 13-Mar-2007
+#    to enable proper file protection on the
+#    user-id/password. Defect CMS-DFCT102019
+# AUDIT TRAIL: 8.0
+# 1. Apply 7.5 modifications to 8.0
+# AUDIT TRAIL: 8.3.0.2
+# 1. Defect 1-3N4X4L                         LVH 03/10/2010
+#    Create an empty temporary file and then set permissions
+#    to insure that the file is protected during the echo.
+# AUDIT TRAIL: 8.8.0.1
+#    Defect CR-000123631
+#    MBN 14/09/2015
+# 1. Changed hard code password to use ENV variable DFLT_GENLPRD_PASS
+# AUDIT TRAIL: 8.8.6
+# 1. Defect CR-000139152             TGKinderman 04/15/2016
+#    Added an & character to the end of the line that starts
+#    gurjobs program execution. This submits the program to
+#    background allowing the execution of this shl file to
+#    continue. The file containing the credentials is then
+#    removed.
+# AUDIT TRAIL: 8.10.1
+# 1. Defect CR-000142152             AVM 02/27/2016
+#    Updated the Audit trail to correctly identify the shell script as gurjobs.shl 
+#	 which was earlier represented as gjajobs.shl.
+# AUDIT TRAIL END
+tmptime=`date '+%m%d%y%H%M%S'`
+cat /dev/null > gurjobs.$tmptime
+chmod 600 gurjobs.$tmptime
+echo 'genlprd'   >> gurjobs.$tmptime
+echo "$DFLT_GENLPRD_PASS" >> gurjobs.$tmptime
+gurjobs -o jobs1 < gurjobs.$tmptime &
+rm gurjobs.$tmptime
